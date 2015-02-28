@@ -1,3 +1,5 @@
-AnyEvent::IO
 Cwd
 Encode
+File::stat
+
+AnyEvent::IO

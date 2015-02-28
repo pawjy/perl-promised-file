@@ -126,4 +126,174 @@ test {
   })->then (sub { done $c; undef $c });
 } n => 1, name => 'read_char_string file not found';
 
+test {
+  my $c = shift;
+  my $f = Promised::File->new_from_path (path (__FILE__)->parent->parent->child ('t_deps/data/1.txt'));
+  $f->stat->then (sub {
+    my $stat = $_[0];
+    test {
+      isa_ok $stat, 'File::stat';
+      ok -e $stat;
+      ok -f $stat;
+      ok not -d $stat;
+      ok not -l $stat;
+      done $c;
+      undef $c;
+    } $c;
+  });
+} n => 5, name => 'stat normal file';
+
+test {
+  my $c = shift;
+  my $f = Promised::File->new_from_path (path (__FILE__)->parent->parent->child ('t_deps/data/symlink1.txt'));
+  $f->stat->then (sub {
+    my $stat = $_[0];
+    test {
+      isa_ok $stat, 'File::stat';
+      ok -e $stat;
+      ok -f $stat;
+      ok not -d $stat;
+      ok not -l $stat;
+      done $c;
+      undef $c;
+    } $c;
+  });
+} n => 5, name => 'stat symlink';
+
+test {
+  my $c = shift;
+  my $f = Promised::File->new_from_path (path (__FILE__)->parent->parent->child ('t_deps/data/'));
+  $f->stat->then (sub {
+    my $stat = $_[0];
+    test {
+      isa_ok $stat, 'File::stat';
+      ok -e $stat;
+      ok not -f $stat;
+      ok -d $stat;
+      ok not -l $stat;
+      done $c;
+      undef $c;
+    } $c;
+  });
+} n => 5, name => 'stat directory';
+
+test {
+  my $c = shift;
+  my $f = Promised::File->new_from_path (path (__FILE__)->parent->parent->child ('t_deps/data/not/found.txt'));
+  $f->stat->catch (sub {
+    my $error = $_[0];
+    test {
+      ok $error;
+      done $c;
+      undef $c;
+    } $c;
+  });
+} n => 1, name => 'stat not found';
+
+test {
+  my $c = shift;
+  my $f = Promised::File->new_from_path (path (__FILE__)->parent->parent->child ('t_deps/data/1.txt'));
+  $f->lstat->then (sub {
+    my $stat = $_[0];
+    test {
+      isa_ok $stat, 'File::stat';
+      ok -e $stat;
+      ok -f $stat;
+      ok not -d $stat;
+      ok not -l $stat;
+      done $c;
+      undef $c;
+    } $c;
+  });
+} n => 5, name => 'lstat normal file';
+
+test {
+  my $c = shift;
+  my $f = Promised::File->new_from_path (path (__FILE__)->parent->parent->child ('t_deps/data/symlink1.txt'));
+  $f->lstat->then (sub {
+    my $stat = $_[0];
+    test {
+      isa_ok $stat, 'File::stat';
+      ok -e $stat;
+      ok not -f $stat;
+      ok not -d $stat;
+      ok -l $stat;
+      done $c;
+      undef $c;
+    } $c;
+  });
+} n => 5, name => 'lstat symlink';
+
+test {
+  my $c = shift;
+  my $f = Promised::File->new_from_path (path (__FILE__)->parent->parent->child ('t_deps/data/'));
+  $f->lstat->then (sub {
+    my $stat = $_[0];
+    test {
+      isa_ok $stat, 'File::stat';
+      ok -e $stat;
+      ok not -f $stat;
+      ok -d $stat;
+      ok not -l $stat;
+      done $c;
+      undef $c;
+    } $c;
+  });
+} n => 5, name => 'lstat directory';
+
+test {
+  my $c = shift;
+  my $f = Promised::File->new_from_path (path (__FILE__)->parent->parent->child ('t_deps/data/not/found.txt'));
+  $f->lstat->catch (sub {
+    my $error = $_[0];
+    test {
+      ok $error;
+      done $c;
+      undef $c;
+    } $c;
+  });
+} n => 1, name => 'lstat not found';
+
+for (
+  ['t_deps/data/not/found.txt', 0, 0, 0, 0],
+  ['t_deps/data/1.txt',         1, 0, 0, 0],
+  ['t_deps/data',               0, 1, 0, 1],
+  ['t_deps/data/symlink1.txt',  1, 0, 1, 1],
+  ['t_deps/data/symlinkd1',     0, 1, 1, 1],
+  ['t_deps/data/3.txt',         1, 0, 0, 1],
+) {
+  my ($path, $is_file, $is_directory, $is_symlink, $is_executable) = @$_;
+  test {
+    my $c = shift;
+    my $f = Promised::File->new_from_path (path (__FILE__)->parent->parent->child ($path));
+    Promise->all ([
+      $f->is_file->then (sub {
+        my $value = $_[0];
+        test { is !!$value, !!$is_file, 'is_file' } $c;
+      }),
+      $f->is_directory->then (sub {
+        my $value = $_[0];
+        test { is !!$value, !!$is_directory, 'is_directory' } $c;
+      }),
+      $f->is_symlink->then (sub {
+        my $value = $_[0];
+        test { is !!$value, !!$is_symlink, 'is_symlink' } $c;
+      }),
+      $f->is_executable->then (sub {
+        my $value = $_[0];
+        test { is !!$value, !!$is_executable, 'is_executable' } $c;
+      }),
+    ])->then (sub { done $c; undef $c });
+  } n => 4, name => [$path];
+}
+
 run_tests;
+
+=head1 LICENSE
+
+Copyright 2015 Wakaba <wakaba@suikawiki.org>.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

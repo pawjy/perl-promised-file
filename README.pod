@@ -32,13 +32,42 @@ Paths in non-unix platforms such as Windows are not supported.  Paths
 in character encoding other than UTF-8 (or binary data) are not
 supported.
 
-=item $bytes = $file->read_byte_string
+=item $file->stat->then (sub { $stat = shift })
+
+Return a L<Promise>, which is resolved with the C<stat> L<File::stat>
+object for the file.  See C<perldoc -f stat> and L<File::stat> for
+details.  Note that the object is cached such that the promise
+returned by the method is always resolved with the same object.  If
+the file is not found, the promise is rejected.
+
+=item $file->lstat->then (sub { $stat = shift })
+
+Return a L<Promise>, which is resolved with the C<lstat> L<File::stat>
+object for the file.  See C<perldoc -f lstat> and L<File::stat> for
+details.  Note that the object is cached such that the promise
+returned by the method is always resolved with the same object.  If
+the file is not found, the promise is rejected.
+
+=item $file->is_file->then (sub { $boolean = shift })
+
+=item $file->is_directory->then (sub { $boolean = shift })
+
+=item $file->is_symlink->then (sub { $boolean = shift })
+
+=item $file->is_executable->then (sub { $boolean = shift })
+
+Return a L<Promise>, which is resolved with whether it is a file
+(C<-f>), a directory (C<-d>), a symlink (C<-l>), or an executable file
+(C<-x>), respectively.  If the file is not found, the promise is
+resolved with false.
+
+=item $file->read_byte_string->then (sub { $bytes = shift })
 
 Return a L<Promise>, which is resolved with the content of the file as
 a byte string.  If the specified file is not found, the promise is
 rejected.
 
-=item $chars = $file->read_char_string
+=item $file->read_char_string->then (sub { $chars = shift })
 
 Return a L<Promise>, which is resolved with the content of the file
 interpreted as a UTF-8 encoded byte sequence, represented as a Perl
