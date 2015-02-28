@@ -1,5 +1,7 @@
 Cwd
 Encode
+File::Path
 File::stat
 
 AnyEvent::IO
+AnyEvent::Util

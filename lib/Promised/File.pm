@@ -4,6 +4,7 @@ use warnings;
 our $VERSION = '1.0';
 use Encode;
 use AnyEvent::IO qw(:DEFAULT :flags);
+use AnyEvent::Util;
 use Promise;
 
 sub new_from_path ($$) {
@@ -73,6 +74,69 @@ sub is_executable ($) {
     return 0;
   });
 } # is_executable
+
+sub mkpath ($) {
+  my $self = $_[0];
+  return $self->is_directory->then (sub {
+    if ($_[0]) {
+      return;
+    } else {
+      my $path = $self->{path};
+      $path =~ s{/+[^/]*\z}{};
+      return __PACKAGE__->new_from_path ($path)->mkpath->then (sub {
+        return Promise->new (sub {
+          my ($ok, $ng) = @_;
+          aio_mkdir $self->{path}, 0755, sub {
+            return $ng->("|$self->{path}|: $!") unless @_;
+            delete $self->{stat};
+            delete $self->{lstat};
+            $ok->();
+          };
+        })->catch (sub {
+          my $error = $_[0];
+          delete $self->{stat};
+          delete $self->{lstat};
+          return $self->is_directory->then (sub {
+            if ($_[0]) {
+              return;
+            } else {
+              die $error;
+            }
+          });
+        });
+      });
+    }
+  });
+} # mkpath
+
+sub remove_tree ($) {
+  my $self = $_[0];
+  return $self->stat->then (sub {
+    if (-e $_[0]) {
+      return Promise->new (sub {
+        my ($ok, $ng) = @_;
+        my $path = $self->{path};
+        fork_call {
+          my $err;
+          my $args = {err => \$err, safe => 1};
+          require File::Path;
+          File::Path::remove_tree ($path, $args);
+          if (defined $err and @$err) {
+            my ($file, $msg) = %{$err->[0]};
+            die "$file: $msg\n";
+          }
+          return 1;
+        } sub {
+          return $ng->($@ || $!) unless @_;
+          delete $self->{stat};
+          delete $self->{lstat};
+          $ok->();
+        };
+      });
+    }
+    return;
+  }, sub { return });
+} # remove_tree
 
 sub read_byte_string ($) {
   my $self = $_[0];

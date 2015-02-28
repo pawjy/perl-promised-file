@@ -74,6 +74,18 @@ interpreted as a UTF-8 encoded byte sequence, represented as a Perl
 utf8 string.  If the specified file is not found, the promise is
 rejected.
 
+=item $promise = $file->mkpath
+
+Return a L<Promise>, which is resolved after the directory specified
+by the path of the C<$file> object is created (if not yet).  It is
+rejected if there is a conflicting file.
+
+=item $promise = $file->remove_tree
+
+Return a L<Promise>, which is resolved after the file or directory
+specified by the path of the C<$file> object is removed, if any, as
+well as any descendant.  It is rejected if the removal failed.
+
 =back
 
 =head1 DEPENDENCY

@@ -287,6 +287,190 @@ for (
   } n => 4, name => [$path];
 }
 
+my $TempPath = q{/tmp};
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge" . rand;
+  my $f = Promised::File->new_from_path ($p);
+  $f->mkpath->then (sub {
+    my $g = Promised::File->new_from_path ($p);
+    return $g->is_directory->then (sub {
+      my $result = $_[0];
+      test {
+        ok $result;
+      } $c;
+    });
+  })->then (sub {
+    return Promised::File->new_from_path ($p)->remove_tree;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'mkpath 1';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge" . rand;
+  my $f = Promised::File->new_from_path ($p);
+  $f->mkpath->then (sub {
+    my $g = Promised::File->new_from_path ("$p/fuga");
+    return $g->mkpath->then (sub {
+      my $h = Promised::File->new_from_path ("$p/fuga");
+      return $h->is_directory->then (sub {
+        my $result = $_[0];
+        test {
+          ok $result;
+        } $c;
+      });
+    });
+  })->then (sub {
+    return Promised::File->new_from_path ($p)->remove_tree;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'mkpath 2';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge" . rand;
+  my $f = Promised::File->new_from_path ($p);
+  $f->mkpath->then (sub {
+    my $g = Promised::File->new_from_path ($p);
+    return $g->mkpath->then (sub {
+      my $h = Promised::File->new_from_path ($p);
+      return $h->is_directory->then (sub {
+        my $result = $_[0];
+        test {
+          ok $result;
+        } $c;
+      });
+    });
+  })->then (sub {
+    return Promised::File->new_from_path ($p)->remove_tree;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'mkpath 0';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge" . rand;
+  my $f = Promised::File->new_from_path ("$p///");
+  $f->mkpath->then (sub {
+    my $g = Promised::File->new_from_path ($p);
+    return $g->is_directory->then (sub {
+      my $result = $_[0];
+      test {
+        ok $result;
+      } $c;
+    });
+  })->then (sub {
+    return Promised::File->new_from_path ($p)->remove_tree;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'mkpath 1 trailing slashes';
+
+test {
+  my $c = shift;
+  my $f = Promised::File->new_from_path (path (__FILE__)->parent->parent->child ('t_deps/data/2.txt'));
+  $f->mkpath->then (sub {
+    test {
+      ok 0;
+    } $c;
+  }, sub {
+    my $error = $_[0];
+    test {
+      ok $error;
+    } $c;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'mkpath conflict with file';
+
+test {
+  my $c = shift;
+  my $f = Promised::File->new_from_path (path (__FILE__)->parent->parent->child ('t_deps/data/2.txt/hoge'));
+  $f->mkpath->then (sub {
+    test {
+      ok 0;
+    } $c;
+  }, sub {
+    my $error = $_[0];
+    test {
+      ok $error;
+    } $c;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'mkpath conflict with file';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge" . rand;
+  my $f = Promised::File->new_from_path ($p);
+  $f->mkpath->then (sub {
+    my $g = Promised::File->new_from_path ($p);
+    return $g->remove_tree->then (sub {
+      my $h = Promised::File->new_from_path ($p);
+      return $h->is_directory->then (sub {
+        my $result = $_[0];
+        test {
+          ok not $result;
+        } $c;
+      });
+    });
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'remove_tree directory';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge" . rand;
+  my $f = Promised::File->new_from_path ("$p/fuga");
+  $f->mkpath->then (sub {
+    my $g = Promised::File->new_from_path ($p);
+    return $g->remove_tree->then (sub {
+      my $h = Promised::File->new_from_path ($p);
+      return $h->is_directory->then (sub {
+        my $result = $_[0];
+        test {
+          ok not $result;
+        } $c;
+      });
+    });
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'remove_tree directory with directory';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge" . rand;
+  my $g = Promised::File->new_from_path ($p);
+  return $g->remove_tree->then (sub {
+    my $h = Promised::File->new_from_path ($p);
+    return $h->is_directory->then (sub {
+      my $result = $_[0];
+      test {
+        ok not $result;
+      } $c;
+    });
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'remove_tree directory not found';
+
 run_tests;
 
 =head1 LICENSE
