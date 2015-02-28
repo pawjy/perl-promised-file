@@ -8,6 +8,8 @@ Promised::File - File system operations
   $file = Promised::File->new_from_path ('path/to/file.txt');
   $file->read_byte_string->then (sub { warn $_[0] });
   $file->read_char_string->then (sub { warn $_[0] });
+  $p = $file->write_byte_string ($bytes);
+  $p = $file->write_char_string ($chars);
 
 =head1 DESCRIPTION
 
@@ -73,6 +75,18 @@ Return a L<Promise>, which is resolved with the content of the file
 interpreted as a UTF-8 encoded byte sequence, represented as a Perl
 utf8 string.  If the specified file is not found, the promise is
 rejected.
+
+=item $promise = $file->write_byte_string ($bytes)
+
+Return a L<Promise>, which is resolved after the specified byte string
+is written to the specified file.  Any existing file is overwritten.
+The promise is rejected if failed.
+
+=item $promise = $file->write_char_string ($chars)
+
+Return a L<Promise>, which is resolved after the specified character
+string is written to the specified file in UTF-8 character encoding.
+Any existing file is overwritten.  The promise is rejected if failed.
 
 =item $promise = $file->mkpath
 

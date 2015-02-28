@@ -471,6 +471,160 @@ test {
   });
 } n => 1, name => 'remove_tree directory not found';
 
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge." . rand;
+  my $f = Promised::File->new_from_path ($p);
+  $f->write_byte_string ('')->then (sub {
+    my $g = Promised::File->new_from_path ($p);
+    $g->read_byte_string->then (sub {
+      my $data = $_[0];
+      test {
+        is $data, '';
+      } $c;
+    });
+  }, sub { test { ok 0 } $c; warn $_[0] })->then (sub {
+    return $f->remove_tree;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'write_byte_string empty';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge." . rand;
+  my $f = Promised::File->new_from_path ($p);
+  $f->write_byte_string ("ab \x00\xFE\x8a\x91aX ")->then (sub {
+    my $g = Promised::File->new_from_path ($p);
+    $g->read_byte_string->then (sub {
+      my $data = $_[0];
+      test {
+        is $data, "ab \x00\xFE\x8a\x91aX ";
+      } $c;
+    });
+  }, sub { test { ok 0 } $c; warn $_[0] })->then (sub {
+    return $f->remove_tree;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'write_byte_string';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge." . rand;
+  my $f = Promised::File->new_from_path ($p);
+  $f->write_byte_string ("ab hoge aaa ")->then (sub {
+    return $f->write_byte_string ("ab \x00\xFE\x8a\x91aX ");
+  })->then (sub {
+    my $g = Promised::File->new_from_path ($p);
+    $g->read_byte_string->then (sub {
+      my $data = $_[0];
+      test {
+        is $data, "ab \x00\xFE\x8a\x91aX ";
+      } $c;
+    });
+  }, sub { test { ok 0 } $c; warn $_[0] })->then (sub {
+    return $f->remove_tree;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'write_byte_string existing';
+
+test {
+  my $c = shift;
+  my $f = Promised::File->new_from_path (path (__FILE__)->parent->parent->child ('t_deps/data'));
+  $f->write_byte_string ("ab hoge aaa ")->then (sub {
+    test { ok 0 } $c;
+  }, sub {
+    my $error = $_[0];
+    test {
+      ok $error;
+    } $c;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'write_byte_string existing directory';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge." . rand;
+  my $f = Promised::File->new_from_path ($p);
+  $f->write_char_string ("ab \x00\xFE\x8a\x91aX ")->then (sub {
+    my $g = Promised::File->new_from_path ($p);
+    $g->read_byte_string->then (sub {
+      my $data = $_[0];
+      test {
+        is $data, "ab \x00\xC3\xBE\xC2\x8A\xC2\x91aX ";
+      } $c;
+    });
+  }, sub { test { ok 0 } $c; warn $_[0] })->then (sub {
+    return $f->remove_tree;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'write_char_string';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge." . rand;
+  my $f = Promised::File->new_from_path ($p);
+  $f->write_char_string ("\x{5000}")->then (sub {
+    my $g = Promised::File->new_from_path ($p);
+    $g->read_byte_string->then (sub {
+      my $data = $_[0];
+      test {
+        is $data, "\xE5\x80\x80";
+      } $c;
+    });
+  }, sub { test { ok 0 } $c; warn $_[0] })->then (sub {
+    return $f->remove_tree;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'write_char_string';
+
+test {
+  my $c = shift;
+  my $f = Promised::File->new_from_path (path (__FILE__)->parent->parent->child ('t_deps/data'));
+  $f->write_char_string ("ab hoge aaa ")->then (sub {
+    test { ok 0 } $c;
+  }, sub {
+    my $error = $_[0];
+    test {
+      ok $error;
+    } $c;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'write_char_string existing directory';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge." . rand;
+  my $f = Promised::File->new_from_path ("$p/a/b/c.txt");
+  $f->write_char_string ("\x{5000}")->then (sub {
+    my $g = Promised::File->new_from_path ("$p/a/b/c.txt");
+    $g->read_byte_string->then (sub {
+      my $data = $_[0];
+      test {
+        is $data, "\xE5\x80\x80";
+      } $c;
+    });
+  }, sub { test { ok 0 } $c; warn $_[0] })->then (sub {
+    return $f->remove_tree;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'write_char_string new directory';
+
 run_tests;
 
 =head1 LICENSE

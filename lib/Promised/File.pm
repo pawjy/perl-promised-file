@@ -155,6 +155,59 @@ sub read_char_string ($) {
   });
 } # read_char_string
 
+sub write_byte_string ($$) {
+  my $self = $_[0];
+  my $sref = \($_[1]);
+  my $path = $self->{path};
+  $path =~ s{[^/]*\z}{};
+  return __PACKAGE__->new_from_path ($path)->mkpath->then (sub {
+    my $fh;
+    return Promise->new (sub {
+      my ($ok, $ng) = @_;
+      aio_open $self->{path}, O_WRONLY | O_TRUNC | O_CREAT, 0644, sub {
+        return $ng->("|$self->{path}|: $!") unless @_;
+        $fh = $_[0];
+        delete $self->{stat};
+        delete $self->{lstat};
+        $ok->();
+      };
+    })->then (sub {
+      my $write; $write = sub {
+        return Promise->new (sub {
+          my ($ok, $ng) = @_;
+          aio_write $fh, $$sref, sub {
+            return $ng->("|$self->{path}|: $!") unless @_;
+            my $length = $_[0];
+            if ($length < length $$sref) {
+              my $s = substr $$sref, $length;
+              $sref = \$s;
+              $ok->($write->());
+            } else {
+              $ok->();
+            }
+          };
+        });
+      }; # $write
+      return $write->()->then (sub {
+        return Promise->new (sub {
+          my ($ok, $ng) = @_;
+          aio_close $fh, sub { $ok->() };
+        });
+      }, sub {
+        my $error = $_[0];
+        return Promise->new (sub {
+          my ($ok, $ng) = @_;
+          aio_close $fh, sub { $ok->() };
+        })->then (sub { return $error });
+      });
+    });
+  });
+} # write_byte_string
+
+sub write_char_string ($$) {
+  return $_[0]->write_byte_string (encode 'utf-8', $_[1]);
+} # write_char_string
+
 1;
 
 =head1 LICENSE
