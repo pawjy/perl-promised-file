@@ -104,9 +104,7 @@ well as any descendant.  It is rejected if the removal failed.
 
 =head1 DEPENDENCY
 
-The module requires Perl 5.8 or later.  For Perl less than 5.12, newer
-version of L<File::stat> than the module in the Perl core distribution
-is required.
+The module requires Perl 5.12 or later.
 
 The module requires L<Promise>
 <https://github.com/wakaba/perl-promise> and L<AnyEvent>.
