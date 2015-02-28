@@ -1,0 +1,68 @@
+=head1 NAME
+
+Promised::File - File system operations
+
+=head1 SYNOPSIS
+
+  use Promised::File;
+  $file = Promised::File->new_from_path ('path/to/file.txt');
+  $file->read_byte_string->then (sub { warn $_[0] });
+  $file->read_char_string->then (sub { warn $_[0] });
+
+=head1 DESCRIPTION
+
+The C<Promised::File> class provides file system operations returning
+L<Promise> objects.
+
+=head1 METHOD
+
+Following methods are available:
+
+=over 4
+
+=item $file = Promised::File->new_from_path ($string)
+
+Create a C<Promised::File> object with the specified path.
+
+The path must be a Unix style character string of the relative or
+absolute path to the file.  A relative path is resolved against the
+current working directory.
+
+Paths in non-unix platforms such as Windows are not supported.  Paths
+in character encoding other than UTF-8 (or binary data) are not
+supported.
+
+=item $bytes = $file->read_byte_string
+
+Return a L<Promise>, which is resolved with the content of the file as
+a byte string.  If the specified file is not found, the promise is
+rejected.
+
+=item $chars = $file->read_char_string
+
+Return a L<Promise>, which is resolved with the content of the file
+interpreted as a UTF-8 encoded byte sequence, represented as a Perl
+utf8 string.  If the specified file is not found, the promise is
+rejected.
+
+=back
+
+=head1 DEPENDENCY
+
+The module requires Perl 5.8 or later.
+
+The module requires L<Promise>
+<https://github.com/wakaba/perl-promise> and L<AnyEvent>.
+
+=head1 AUTHOR
+
+Wakaba <wakaba@suikawiki.org>.
+
+=head1 LICENSE
+
+Copyright 2015 Wakaba <wakaba@suikawiki.org>.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut
