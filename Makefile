@@ -1,5 +1,3 @@
-# -*- Makefile -*-
-
 all:
 
 WGET = wget
@@ -30,6 +28,7 @@ pmbp-update: git-submodules pmbp-upgrade
 	perl local/bin/pmbp.pl $(PMBP_OPTIONS) --update
 pmbp-install: pmbp-upgrade
 	perl local/bin/pmbp.pl $(PMBP_OPTIONS) --install \
+	    --install-module File::stat~1.02 \
             --create-perl-command-shortcut @perl \
             --create-perl-command-shortcut @prove
 
