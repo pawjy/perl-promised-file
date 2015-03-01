@@ -28,7 +28,9 @@ Create a C<Promised::File> object with the specified path.
 
 The path must be a Unix style character string of the relative or
 absolute path to the file.  A relative path is resolved against the
-current working directory.
+current working directory.  (However, it does not support resolving of
+C<~> syntax (home directory).  It is recommended that an absolute path
+be specified as the argument.)
 
 Paths in non-unix platforms such as Windows are not supported.  Paths
 in character encoding other than UTF-8 (or binary data) are not
