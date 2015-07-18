@@ -7,5 +7,5 @@ Encode~2.75
 Carp~1.36
 Test::More~1.001014
 Filter::Util::Call~1.54
-File::Path~2.09
+File::Path~2.11
 Path::Tiny~0.070
