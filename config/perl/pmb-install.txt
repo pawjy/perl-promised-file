@@ -3,7 +3,7 @@ parent~0.234
 Term::ANSIColor~4.03
 AnyEvent~7.11
 File::Spec~3.47
-Encode~2.77
+Encode~2.78
 Carp~1.36
 Test::More~1.001014
 Filter::Util::Call~1.55
