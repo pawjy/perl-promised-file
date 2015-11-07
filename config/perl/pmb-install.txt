@@ -4,7 +4,7 @@ Term::ANSIColor~4.03
 AnyEvent~7.11
 File::Spec~3.47
 Encode~2.78
-Carp~1.36
+Carp~1.38
 Test::More~1.001014
 Filter::Util::Call~1.55
 File::Path~2.12
