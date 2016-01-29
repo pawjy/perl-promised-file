@@ -118,7 +118,7 @@ sub remove_tree ($) {
         my $path = $self->{path};
         fork_call {
           my $err;
-          my $args = {err => \$err, safe => 1};
+          my $args = {error => \$err, safe => 1};
           require File::Path;
           File::Path::remove_tree ($path, $args);
           if (defined $err and @$err) {
