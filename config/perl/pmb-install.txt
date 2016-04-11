@@ -2,7 +2,7 @@ Scalar::Util~1.45
 parent~0.234
 Term::ANSIColor~4.05
 AnyEvent~7.12
-Encode~2.83
+Encode~2.84
 Carp~1.38
 Test::More~1.001014
 Filter::Util::Call~1.55
