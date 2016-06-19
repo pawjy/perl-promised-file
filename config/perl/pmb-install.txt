@@ -4,7 +4,7 @@ Term::ANSIColor~4.05
 AnyEvent~7.12
 Encode~2.84
 Carp~1.38
-Test::More~1.302026
+Test::More~1.302030
 Filter::Util::Call~1.55
 File::Path~2.12
 Cwd~3.62
