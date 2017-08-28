@@ -94,6 +94,13 @@ Any data written to the stream (i.e. the argument to the writer's
 C<write> method) must be an L<ArrayBufferView> (such as L<DataView>
 and L<TypedArray::Uint8Array>).
 
+Aborting the stream (i.e. the C<abort> method) closes the file,
+without completing the outstanding writes, and in fact the pending
+creation of the file, depending on when the stream is aborted.
+Therefore, the stream should not be aborted unless the application
+(and the user) no longer have any interest to the file's content at
+all.
+
 =item $promise = $file->write_byte_string ($bytes)
 
 Return a L<Promise>, which is resolved after the specified byte string
@@ -118,6 +125,16 @@ Return a L<Promise>, which is resolved after the file or directory
 specified by the path of the C<$file> object is removed, if any, as
 well as any descendant.  It is rejected if the removal failed.
 
+=item $file->get_child_names->then (sub { $names = $_[0] })
+
+Return a L<Promise>, which is resolved with an array reference of the
+file names in the directory specified by the path of the C<$file>
+object.  The array items are the names of the files and directories
+directly beglonging to the directory, without directory paths, as byte
+strings.  Special directories C<.> and C<..> are I<not> included in
+the array.  It is rejected if there is no such directory or it is not
+a directory.
+
 =back
 
 =head1 DEPENDENCY
@@ -129,7 +146,9 @@ The module requires L<Promise>
 
 Methods C<read_bytes> and C<write_bytes> requires the
 L<ReadableStream> and L<WritableStream> modules from the perl-streams
-package <https://github.com/manakai/perl-streams>.
+package <https://github.com/manakai/perl-streams>.  Method
+C<get_child_names> requires L<Streams::IOError> from the perl-streams
+package.
 
 If the L<Web::Encoding> module (from the perl-web-encodings package
 <https://github.com/manakai/perl-web-encodings>) is available, that

@@ -9,7 +9,7 @@ use Promised::Flow;
 
 push our @CARP_NOT, qw(
   Streams::IOError ReadableStream WritableStream
-  TypedArray DataView
+  TypedArray DataView Promise
 );
 
 eval { require Web::Encoding };
@@ -152,6 +152,20 @@ sub remove_tree ($) {
     return;
   }, sub { return });
 } # remove_tree
+
+sub get_child_names ($) {
+  my $self = $_[0];
+  return Promise->new (sub {
+    my ($ok, $ng) = @_;
+    aio_readdir $self->{path}, sub {
+      return $ng->([0+$!, "".$!]) unless @_;
+      $ok->($_[0]);
+    };
+  })->catch (sub {
+    require Streams::IOError;
+    die Streams::IOError->new_from_errno_and_message (@{$_[0]});
+  });
+} # get_child_names
 
 sub read_bytes ($) {
   my $self = $_[0];

@@ -625,11 +625,151 @@ test {
   });
 } n => 1, name => 'write_char_string new directory';
 
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge" . rand;
+  my $f = Promised::File->new_from_path ($p);
+  $f->mkpath->then (sub {
+    return $f->get_child_names;
+  })->then (sub {
+    my $result = $_[0];
+    test {
+      is ref $result, 'ARRAY';
+      is 0+@$result, 0;
+    } $c;
+  })->then (sub {
+    return $f->remove_tree;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 2, name => 'get_child_names empty';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge" . rand;
+  my $f = Promised::File->new_from_path ($p);
+  Promise->all ([
+    Promised::File->new_from_path ("$p/abc")->write_byte_string (''),
+    Promised::File->new_from_path ("$p/def.txt")->write_byte_string (''),
+  ])->then (sub {
+    return $f->get_child_names;
+  })->then (sub {
+    my $result = $_[0];
+    test {
+      is ref $result, 'ARRAY';
+      is 0+@$result, 2;
+      my $names = {map { $_ => 1 } @$result};
+      ok $names->{'abc'};
+      ok $names->{'def.txt'};
+    } $c;
+  })->then (sub {
+    return $f->remove_tree;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 4, name => 'get_child_names not empty';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge" . rand;
+  my $f = Promised::File->new_from_path ($p);
+  Promise->all ([
+    Promised::File->new_from_path ("$p/\x{4e00}a")->write_byte_string (''),
+  ])->then (sub {
+    return $f->get_child_names;
+  })->then (sub {
+    my $result = $_[0];
+    test {
+      is ref $result, 'ARRAY';
+      is 0+@$result, 1;
+      my $names = {map { $_ => 1 } @$result};
+      ok $names->{"\xE4\xB8\x80a"};
+    } $c;
+  })->then (sub {
+    return $f->remove_tree;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 3, name => 'get_child_names non-ASCII';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge" . rand;
+  my $f = Promised::File->new_from_path ($p);
+  Promise->all ([
+    Promised::File->new_from_path ("$p/abc")->write_byte_string (''),
+    Promised::File->new_from_path ("$p/def/foo.txt")->write_byte_string (''),
+  ])->then (sub {
+    return $f->get_child_names;
+  })->then (sub {
+    my $result = $_[0];
+    test {
+      is ref $result, 'ARRAY';
+      is 0+@$result, 2;
+      my $names = {map { $_ => 1 } @$result};
+      ok $names->{'abc'};
+      ok $names->{'def'};
+    } $c;
+  })->then (sub {
+    return $f->remove_tree;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 4, name => 'get_child_names directory';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge" . rand;
+  my $f = Promised::File->new_from_path ($p);
+  return $f->get_child_names->catch (sub {
+    my $error = $_[0];
+    test {
+      is $error->name, 'Perl I/O error', $error;
+      ok $error->errno;
+      ok $error->message;
+      is $error->file_name, __FILE__;
+      is $error->line_number, __LINE__+7;
+    } $c;
+  })->then (sub {
+    return $f->remove_tree;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 5, name => 'get_child_names not found';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge" . rand;
+  my $f = Promised::File->new_from_path ($p);
+  return $f->write_byte_string ('')->then (sub {
+    return $f->get_child_names;
+  })->catch (sub {
+    my $error = $_[0];
+    test {
+      is $error->name, 'Perl I/O error', $error;
+      ok $error->errno;
+      ok $error->message;
+      is $error->file_name, __FILE__;
+      is $error->line_number, __LINE__-8;
+    } $c;
+  })->then (sub {
+    return $f->remove_tree;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 5, name => 'get_child_names file';
+
 run_tests;
 
 =head1 LICENSE
 
-Copyright 2015 Wakaba <wakaba@suikawiki.org>.
+Copyright 2015-2017 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
