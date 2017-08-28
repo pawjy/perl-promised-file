@@ -120,6 +120,11 @@ The module requires L<Promise>
 Method C<read_bytes> requires the L<ReadableStream> module from the
 perl-streams package <https://github.com/manakai/perl-streams>.
 
+If the L<Web::Encoding> module (from the perl-web-encodings package
+<https://github.com/manakai/perl-web-encodings>) is available, that
+module is used to encode or decode UTF-8 texts in a way compatible
+with the Web.  Otherwise, the Perl's L<Encode> module is used instead.
+
 =head1 AUTHOR
 
 Wakaba <wakaba@suikawiki.org>.

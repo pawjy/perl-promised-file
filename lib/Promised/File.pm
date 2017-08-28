@@ -2,7 +2,6 @@ package Promised::File;
 use strict;
 use warnings;
 our $VERSION = '2.0';
-use Encode;
 use AnyEvent::IO qw(:DEFAULT :flags);
 use AnyEvent::Util;
 use Promise;
@@ -10,13 +9,23 @@ use Promised::Flow;
 
 push our @CARP_NOT, qw(Streams::IOError ReadableStream);
 
+eval { require Web::Encoding };
+if (Web::Encoding->can ('encode_web_utf8')) {
+  *encode_utf8 = Web::Encoding->can ('encode_web_utf8');
+  *decode_utf8 = Web::Encoding->can ('decode_web_utf8');
+} else {
+  require Encode;
+  *encode_utf8 = sub ($) { return Encode::encode ("utf-8", $_[0]) };
+  *decode_utf8 = sub ($) { return Encode::decode ("utf-8", $_[0]) };
+}
+
 sub new_from_path ($$) {
   my $path = $_[1];
   unless ($path =~ m{^/}) {
     require Cwd;
     $path = Cwd::getcwd () . '/' . $path;
   }
-  $path = encode 'utf-8', $path;
+  $path = encode_utf8 ($path);
   return bless {path => $path}, $_[0];
 } # new_from_path
 
@@ -214,7 +223,7 @@ sub read_byte_string ($) {
 
 sub read_char_string ($) {
   return $_[0]->read_byte_string->then (sub {
-    return decode 'utf-8', $_[0];
+    return decode_utf8 ($_[0]);
   });
 } # read_char_string
 
@@ -268,7 +277,7 @@ sub write_byte_string ($$) {
 } # write_byte_string
 
 sub write_char_string ($$) {
-  return $_[0]->write_byte_string (encode 'utf-8', $_[1]);
+  return $_[0]->write_byte_string (encode_utf8 ($_[1]));
 } # write_char_string
 
 1;
