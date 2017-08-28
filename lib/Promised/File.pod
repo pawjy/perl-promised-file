@@ -84,6 +84,16 @@ interpreted as a UTF-8 encoded byte sequence, represented as a Perl
 utf8 string.  If the specified file is not found, the promise is
 rejected.
 
+=item $stream = $file->write_bytes
+
+Return a L<WritableStream> that is a writable stream written into the
+specified file.  Any existing file is overwritten.  The stream is in
+error if failed.
+
+Any data written to the stream (i.e. the argument to the writer's
+C<write> method) must be an L<ArrayBufferView> (such as L<DataView>
+and L<TypedArray::Uint8Array>).
+
 =item $promise = $file->write_byte_string ($bytes)
 
 Return a L<Promise>, which is resolved after the specified byte string
@@ -117,8 +127,9 @@ The module requires Perl 5.12 or later.
 The module requires L<Promise>
 <https://github.com/wakaba/perl-promise> and L<AnyEvent>.
 
-Method C<read_bytes> requires the L<ReadableStream> module from the
-perl-streams package <https://github.com/manakai/perl-streams>.
+Methods C<read_bytes> and C<write_bytes> requires the
+L<ReadableStream> and L<WritableStream> modules from the perl-streams
+package <https://github.com/manakai/perl-streams>.
 
 If the L<Web::Encoding> module (from the perl-web-encodings package
 <https://github.com/manakai/perl-web-encodings>) is available, that

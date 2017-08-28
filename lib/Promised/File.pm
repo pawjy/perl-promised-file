@@ -7,7 +7,10 @@ use AnyEvent::Util;
 use Promise;
 use Promised::Flow;
 
-push our @CARP_NOT, qw(Streams::IOError ReadableStream);
+push our @CARP_NOT, qw(
+  Streams::IOError ReadableStream WritableStream
+  TypedArray DataView
+);
 
 eval { require Web::Encoding };
 if (Web::Encoding->can ('encode_web_utf8')) {
@@ -201,7 +204,10 @@ sub read_bytes ($) {
           die Streams::IOError->new_from_errno_and_message (@{$_[0]});
         });
       }; # $run
-      return promised_cleanup { undef $run } $run->();
+      return promised_cleanup { undef $run } $run->()->catch (sub {
+        undef $fh;
+        die $_[0];
+      });
     }, # pull
     cancel => sub {
       undef $fh;
@@ -226,6 +232,76 @@ sub read_char_string ($) {
     return decode_utf8 ($_[0]);
   });
 } # read_char_string
+
+sub write_bytes ($) {
+  my $self = $_[0];
+  my $path = $self->{path};
+  $path =~ s{[^/]*\z}{};
+  require WritableStream;
+  require DataView;
+  my $fh;
+  return WritableStream->new ({
+    start => sub {
+      return __PACKAGE__->new_from_path ($path)->mkpath->then (sub {
+        return Promise->new (sub {
+          my ($ok, $ng) = @_;
+          aio_open $self->{path}, O_WRONLY | O_TRUNC | O_CREAT, 0644, sub {
+            return $ng->([0+$!, "".$!]) unless @_;
+            $fh = $_[0];
+            delete $self->{stat};
+            delete $self->{lstat};
+            $ok->();
+          };
+        })->catch (sub {
+          die Streams::IOError->new_from_errno_and_message (@{$_[0]});
+        });
+      });
+    }, # start
+    write => sub {
+      my $view = $_[1];
+      return Promise->resolve->then (sub {
+        die "The argument is not an ArrayBufferView"
+            unless UNIVERSAL::isa ($view, 'ArrayBufferView');
+        my $dv = DataView->new
+            ($view->buffer, $view->byte_offset, $view->byte_length); # or throw
+        my $write; $write = sub {
+          return unless $dv->byte_length;
+          return Promise->new (sub {
+            my ($ok, $ng) = @_;
+            aio_write $fh, $dv->manakai_to_string, sub {
+              return $ng->([0+$!, "".$!]) unless @_;
+              return $ok->($_[0]); # length
+            };
+          })->then (sub {
+            $dv = DataView->new
+                ($dv->buffer, $dv->byte_offset + $_[0], $dv->byte_length - $_[0]); # or throw
+          }, sub {
+            die Streams::IOError->new_from_errno_and_message (@{$_[0]});
+          });
+          return $write->();
+        }; # $write
+        return promised_cleanup { undef $write } $write->();
+      })->catch (sub {
+        my $error = $_[0];
+        return Promise->new (sub {
+          aio_close $fh, $_[0];
+        })->then (sub {
+          die $error;
+        });
+      });
+    }, # write
+    close => sub {
+      return Promise->new (sub {
+        aio_close $fh, $_[0];
+      });
+    }, # close
+    abort => sub {
+      return Promise->new (sub {
+        aio_close $fh, $_[0];
+      });
+    }, # abort
+  });
+} # write_bytes
 
 sub write_byte_string ($$) {
   my $self = $_[0];
