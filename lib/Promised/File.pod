@@ -65,6 +65,12 @@ Return a L<Promise>, which is resolved with whether it is a file
 (C<-x>), respectively.  If the file is not found, the promise is
 resolved with false.
 
+=item $stream = $file->read_bytes
+
+Return a L<ReadableStream> that is a readable byte stream of the
+content of the file.  If the specified file is not found, the stream
+is in error.
+
 =item $file->read_byte_string->then (sub { $bytes = shift })
 
 Return a L<Promise>, which is resolved with the content of the file as
@@ -111,13 +117,16 @@ The module requires Perl 5.12 or later.
 The module requires L<Promise>
 <https://github.com/wakaba/perl-promise> and L<AnyEvent>.
 
+Method C<read_bytes> requires the L<ReadableStream> module from the
+perl-streams package <https://github.com/manakai/perl-streams>.
+
 =head1 AUTHOR
 
 Wakaba <wakaba@suikawiki.org>.
 
 =head1 LICENSE
 
-Copyright 2015 Wakaba <wakaba@suikawiki.org>.
+Copyright 2015-2017 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

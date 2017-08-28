@@ -1,11 +1,14 @@
 package Promised::File;
 use strict;
 use warnings;
-our $VERSION = '1.0';
+our $VERSION = '2.0';
 use Encode;
 use AnyEvent::IO qw(:DEFAULT :flags);
 use AnyEvent::Util;
 use Promise;
+use Promised::Flow;
+
+push our @CARP_NOT, qw(Streams::IOError ReadableStream);
 
 sub new_from_path ($$) {
   my $path = $_[1];
@@ -138,6 +141,66 @@ sub remove_tree ($) {
   }, sub { return });
 } # remove_tree
 
+sub read_bytes ($) {
+  my $self = $_[0];
+  require ArrayBuffer;
+  require DataView;
+  require ReadableStream;
+  my $fh;
+  my $rs = ReadableStream->new ({
+    type => 'bytes',
+    start => sub {
+      my $rc = $_[1];
+      return Promise->new (sub {
+        my ($ok, $ng) = @_;
+        aio_open $self->{path}, O_RDONLY, 0, sub {
+          return $ng->([0+$!, "".$!]) unless @_;
+          $fh = $_[0];
+          $ok->();
+        };
+      })->catch (sub {
+        die Streams::IOError->new_from_errno_and_message (@{$_[0]});
+      });
+    }, # start
+    auto_allocate_chunk_size => 1024*2,
+    pull => sub {
+      my $rc = $_[1];
+      my $run; $run = sub {
+        my $req = $rc->byob_request;
+        return unless defined $req;
+
+        my $length = $req->view->byte_length;
+        return unless $length;
+        return Promise->new (sub {
+          my ($ok, $ng) = @_;
+          return $ok->(undef) unless defined $fh;
+          aio_read $fh, $length, sub {
+            return $ng->([0+$!, ''.$!]) unless @_;
+            $ok->(undef) unless length $_[0];
+            $ok->(DataView->new (ArrayBuffer->new_from_scalarref (\($_[0]))));
+          };
+        })->then (sub {
+          if (defined $_[0]) {
+            $rc->enqueue ($_[0]); # will string-copy!
+            return $run->();
+          } else { # eof
+            $rc->close;
+            $req->respond (0);
+            undef $fh;
+          }
+        }, sub {
+          die Streams::IOError->new_from_errno_and_message (@{$_[0]});
+        });
+      }; # $run
+      return promised_cleanup { undef $run } $run->();
+    }, # pull
+    cancel => sub {
+      undef $fh;
+    }, # cancel
+  });
+  return $rs;
+} # read_bytes
+
 sub read_byte_string ($) {
   my $self = $_[0];
   return Promise->new (sub {
@@ -212,7 +275,7 @@ sub write_char_string ($$) {
 
 =head1 LICENSE
 
-Copyright 2015 Wakaba <wakaba@suikawiki.org>.
+Copyright 2015-2017 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
