@@ -15,6 +15,15 @@ test {
 
 test {
   my $c = shift;
+  eval {
+    Promised::File->new_from_path;
+  };
+  like $@, qr{^No argument at \Q@{[__FILE__]}\E line @{[__LINE__-2]}};
+  done $c;
+} n => 1, name => 'Bad path';
+
+test {
+  my $c = shift;
   my $f = Promised::File->new_from_path (path (__FILE__)->parent->parent->child ('t_deps/data/1.txt'));
   $f->read_byte_string->then (sub {
     my $string = $_[0];

@@ -1,7 +1,8 @@
 package Promised::File;
 use strict;
 use warnings;
-our $VERSION = '2.0';
+our $VERSION = '3.0';
+use Carp;
 use AnyEvent::IO qw(:DEFAULT :flags);
 use AnyEvent::Util;
 use Promise;
@@ -24,6 +25,7 @@ if (Web::Encoding->can ('encode_web_utf8')) {
 
 sub new_from_path ($$) {
   my $path = $_[1];
+  croak "No argument" unless defined $path;
   unless ($path =~ m{^/}) {
     require Cwd;
     $path = Cwd::getcwd () . '/' . $path;
