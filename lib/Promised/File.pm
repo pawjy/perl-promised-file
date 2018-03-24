@@ -281,7 +281,7 @@ sub write_bytes ($) {
         my $dv = DataView->new
             ($view->buffer, $view->byte_offset, $view->byte_length); # or throw
         my $write; $write = sub {
-          return unless $dv->byte_length;
+          return Promise->resolve unless $dv->byte_length;
           return Promise->new (sub {
             my ($ok, $ng) = @_;
             aio_write $fh, $dv->manakai_to_string, sub {
