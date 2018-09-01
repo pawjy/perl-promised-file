@@ -171,6 +171,7 @@ sub get_child_names ($) {
 
 sub read_bytes ($) {
   my $self = $_[0];
+  require Streams::IOError;
   require ArrayBuffer;
   require DataView;
   require ReadableStream;
@@ -253,6 +254,7 @@ sub write_bytes ($) {
   my $self = $_[0];
   my $path = $self->{path};
   $path =~ s{[^/]*\z}{};
+  require Streams::IOError;
   require WritableStream;
   require DataView;
   my $fh;
