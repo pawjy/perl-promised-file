@@ -171,6 +171,7 @@ sub get_child_names ($) {
 
 sub read_bytes ($) {
   my $self = $_[0];
+  require Streams::_Common;
   require Streams::IOError;
   require ArrayBuffer;
   require DataView;
@@ -191,7 +192,7 @@ sub read_bytes ($) {
         die Streams::IOError->new_from_errno_and_message (@{$_[0]});
       });
     }, # start
-    auto_allocate_chunk_size => 1024*2,
+    auto_allocate_chunk_size => $Streams::_Common::DefaultBufferSize,
     pull => sub {
       my $rc = $_[1];
       return ((promised_until {
