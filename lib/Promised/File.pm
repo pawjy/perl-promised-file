@@ -1,7 +1,7 @@
 package Promised::File;
 use strict;
 use warnings;
-our $VERSION = '3.0';
+our $VERSION = '4.0';
 use Carp;
 use AnyEvent::IO qw(:DEFAULT :flags);
 use AnyEvent::Util;
@@ -10,7 +10,7 @@ use Promised::Flow;
 
 push our @CARP_NOT, qw(
   Streams::IOError ReadableStream WritableStream
-  TypedArray DataView Promise
+  TypedArray DataView Promise Promised::Flow
 );
 
 eval { require Web::Encoding };
@@ -194,12 +194,12 @@ sub read_bytes ($) {
     auto_allocate_chunk_size => 1024*2,
     pull => sub {
       my $rc = $_[1];
-      my $run; $run = sub {
+      return ((promised_until {
         my $req = $rc->byob_request;
-        return unless defined $req;
+        return 'done' unless defined $req;
 
         my $length = $req->view->byte_length;
-        return unless $length;
+        return 'done' unless $length;
         return Promise->new (sub {
           my ($ok, $ng) = @_;
           return $ok->(undef) unless defined $fh;
@@ -211,20 +211,20 @@ sub read_bytes ($) {
         })->then (sub {
           if (defined $_[0]) {
             $rc->enqueue ($_[0]); # will string-copy!
-            return $run->();
+            return not 'done';
           } else { # eof
             $rc->close;
             $req->respond (0);
             undef $fh;
+            return 'done';
           }
         }, sub {
           die Streams::IOError->new_from_errno_and_message (@{$_[0]});
         });
-      }; # $run
-      return promised_cleanup { undef $run } $run->()->catch (sub {
+      })->catch (sub {
         undef $fh;
         die $_[0];
-      });
+      }));
     }, # pull
     cancel => sub {
       undef $fh;
@@ -282,8 +282,8 @@ sub write_bytes ($) {
             unless UNIVERSAL::isa ($view, 'ArrayBufferView');
         my $dv = DataView->new
             ($view->buffer, $view->byte_offset, $view->byte_length); # or throw
-        my $write; $write = sub {
-          return Promise->resolve unless $dv->byte_length;
+        return promised_until {
+          return 'done' unless $dv->byte_length;
           return Promise->new (sub {
             my ($ok, $ng) = @_;
             aio_write $fh, $dv->manakai_to_string, sub {
@@ -296,9 +296,8 @@ sub write_bytes ($) {
           }, sub {
             die Streams::IOError->new_from_errno_and_message (@{$_[0]});
           });
-          return $write->();
-        }; # $write
-        return promised_cleanup { undef $write } $write->();
+          return not 'done';
+        };
       })->catch (sub {
         my $error = $_[0];
         return Promise->new (sub {
@@ -378,7 +377,7 @@ sub write_char_string ($$) {
 
 =head1 LICENSE
 
-Copyright 2015-2017 Wakaba <wakaba@suikawiki.org>.
+Copyright 2015-2018 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
