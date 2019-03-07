@@ -3,7 +3,6 @@ use strict;
 use warnings;
 our $VERSION = '5.0';
 use Carp;
-use File::Temp;
 use AnyEvent::IO qw(:DEFAULT :flags);
 use AnyEvent::Util;
 use Promise;
@@ -37,6 +36,7 @@ sub new_from_path ($$) {
 
 sub new_temp_directory ($;%) {
   my ($class, %args) = @_;
+  require File::Temp;
   my $temp = File::Temp->newdir (CLEANUP => !$args{no_cleanup});
   my $self = $class->new_from_path ($temp);
   $self->{_temp} = $temp;
