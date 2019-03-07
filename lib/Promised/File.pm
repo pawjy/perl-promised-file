@@ -1,8 +1,9 @@
 package Promised::File;
 use strict;
 use warnings;
-our $VERSION = '4.0';
+our $VERSION = '5.0';
 use Carp;
+use File::Temp;
 use AnyEvent::IO qw(:DEFAULT :flags);
 use AnyEvent::Util;
 use Promise;
@@ -33,6 +34,18 @@ sub new_from_path ($$) {
   $path = encode_utf8 ($path);
   return bless {path => $path}, $_[0];
 } # new_from_path
+
+sub new_temp_directory ($;%) {
+  my ($class, %args) = @_;
+  my $temp = File::Temp->newdir (CLEANUP => !$args{no_cleanup});
+  my $self = $class->new_from_path ($temp);
+  $self->{_temp} = $temp;
+  return $self;
+} # new_temp_directory
+
+sub path_string ($) {
+  return $_[0]->{path};
+} # path_string
 
 sub stat ($) {
   my $self = $_[0];

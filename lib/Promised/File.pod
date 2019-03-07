@@ -36,6 +36,21 @@ Paths in non-unix platforms such as Windows are not supported.  Paths
 in character encoding other than UTF-8 (or binary data) are not
 supported.
 
+=item $file = Promised::File->new_temp_directory (no_cleanup => BOOLEAN)
+
+Cerate a C<Promised::File> object representing a new temporary
+directory created by L<File::Temp>.
+
+By default, the directory is removed after any reference to the file
+object is discarded.  If a named parameter whose name is C<no_cleanup>
+is set to a boolean true value, the directory is not removed.
+
+=item $string = $file->path_string
+
+Return a string that represents the path to the file.  It might or
+might not be equal to the path given upon the creation of the file
+object.  It might or might not be absolute.
+
 =item $file->stat->then (sub { $stat = shift })
 
 Return a L<Promise>, which is resolved with the C<stat> L<File::stat>
@@ -161,7 +176,7 @@ Wakaba <wakaba@suikawiki.org>.
 
 =head1 LICENSE
 
-Copyright 2015-2017 Wakaba <wakaba@suikawiki.org>.
+Copyright 2015-2019 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

@@ -10,8 +10,9 @@ test {
   my $c = shift;
   my $f = Promised::File->new_from_path ('hoge.txt');
   isa_ok $f, 'Promised::File';
+  like $f->path_string, qr{/hoge.txt$};
   done $c;
-} n => 1, name => 'new_from_path';
+} n => 2, name => 'new_from_path';
 
 test {
   my $c = shift;
@@ -774,11 +775,59 @@ test {
   });
 } n => 5, name => 'get_child_names file';
 
+test {
+  my $c = shift;
+  my $d1 = Promised::File->new_temp_directory;
+  ok $d1->path_string;
+  Promised::File->new_from_path (path ($d1->path_string)->child ('hoge.txt'))->write_byte_string ("abc")->then (sub {
+    return Promised::File->new_from_path (path ($d1->path_string)->child ('hoge.txt'))->read_byte_string;
+  })->then (sub {
+    my $content = $_[0];
+    test {
+      is $content, 'abc';
+    } $c;
+    my $file = Promised::File->new_from_path ($d1->path_string);
+    undef $d1;
+    return $file->is_directory;
+  })->then (sub {
+    my $dir = $_[0];
+    test {
+      ok ! $dir;
+    } $c;
+    done $c;
+    undef $c;
+  });
+} n => 3, name => 'new_temp_directory';
+
+test {
+  my $c = shift;
+  my $d1 = Promised::File->new_temp_directory (no_cleanup => 1);
+  ok $d1->path_string;
+  Promised::File->new_from_path (path ($d1->path_string)->child ('hoge.txt'))->write_byte_string ("abc")->then (sub {
+    return Promised::File->new_from_path (path ($d1->path_string)->child ('hoge.txt'))->read_byte_string;
+  })->then (sub {
+    my $content = $_[0];
+    test {
+      is $content, 'abc';
+    } $c;
+    my $file = Promised::File->new_from_path ($d1->path_string);
+    undef $d1;
+    return $file->is_directory;
+  })->then (sub {
+    my $dir = $_[0];
+    test {
+      ok $dir;
+    } $c;
+    done $c;
+    undef $c;
+  });
+} n => 3, name => 'new_temp_directory no_cleanup';
+
 run_tests;
 
 =head1 LICENSE
 
-Copyright 2015-2017 Wakaba <wakaba@suikawiki.org>.
+Copyright 2015-2019 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
