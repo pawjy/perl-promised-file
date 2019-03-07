@@ -1,3 +1,4 @@
 
 - "../../modules/streams" build tests
 - "../../modules/promise.2" build tests
+- "../../modules/web-encodings" build tests
