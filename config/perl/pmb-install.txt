@@ -1,4 +1,4 @@
-AnyEvent::Util
+AnyEvent~7.15
 Carp~1.50
 Cwd~3.75
 File::Path~2.16
