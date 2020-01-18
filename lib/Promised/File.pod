@@ -150,6 +150,40 @@ strings.  Special directories C<.> and C<..> are I<not> included in
 the array.  It is rejected if there is no such directory or it is not
 a directory.
 
+=item $file->lock_new_file (signal => $signal, timeout => $seconds)->then (...)
+
+Exclusively lock the file, using flock (i.e. advisory locking).  If
+the file is not found, a new file is created before locking.
+
+The method returns a promise, which is resolved when a lock is
+acquired (or rejected with an error when failed).
+
+The following options can be specified as named arguments:
+
+=over 4
+
+=item signal => $signal (required)
+
+An L<AbortSignal> object.  If it is aborted before the lock is
+acquired, the locking is canceled and the returned promised is
+rejected with an C<AbortError>.  If it is aborted after the lock is
+acquired, the lock is released.
+
+This option is required.  The lock must be released.
+
+=item timeout => $seconds
+
+The duration the method's attempt to acquire a lock is continued, in
+seconds.  If not specified, no timeout is enforced.  If timeouted, the
+returned promise is rejected.
+
+=item interval => $seconds
+
+The duration between the method's repeated attempts to acquire a lock,
+in seconds.
+
+=back
+
 =back
 
 =head1 DEPENDENCY
@@ -161,14 +195,16 @@ The module requires L<Promise>
 
 Methods C<read_bytes> and C<write_bytes> requires the
 L<ReadableStream> and L<WritableStream> modules from the perl-streams
-package <https://github.com/manakai/perl-streams>.  Method
-C<get_child_names> requires L<Streams::IOError> from the perl-streams
-package.
+package <https://github.com/manakai/perl-streams>.  Methods
+C<get_child_names> and C<lock_new_file> require L<Streams::IOError>
+from the perl-streams package.
 
 If the L<Web::Encoding> module (from the perl-web-encodings package
 <https://github.com/manakai/perl-web-encodings>) is available, that
 module is used to encode or decode UTF-8 texts in a way compatible
 with the Web.  Otherwise, the Perl's L<Encode> module is used instead.
+
+Method C<lock_new_file> requires L<AnyEvent::FileLock>.
 
 =head1 AUTHOR
 
@@ -176,7 +212,7 @@ Wakaba <wakaba@suikawiki.org>.
 
 =head1 LICENSE
 
-Copyright 2015-2019 Wakaba <wakaba@suikawiki.org>.
+Copyright 2015-2020 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

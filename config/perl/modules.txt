@@ -4,3 +4,5 @@ File::stat
 
 AnyEvent::IO
 AnyEvent::Util
+
+AnyEvent::FileLock

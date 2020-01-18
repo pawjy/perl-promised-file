@@ -5,6 +5,8 @@ use lib glob path (__FILE__)->parent->parent->child ('t_deps/modules/*/lib');
 use Test::X1;
 use Test::More;
 use Promised::File;
+use Promised::Flow;
+use AbortController;
 
 test {
   my $c = shift;
@@ -823,11 +825,214 @@ test {
   });
 } n => 3, name => 'new_temp_directory no_cleanup';
 
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge" . rand;
+  my $f = Promised::File->new_from_path ($p);
+  $f->lock_new_file->then (sub {
+    test {
+      ok 0;
+    } $c;
+  }, sub {
+    my $e = $_[0];
+    test {
+      like $e, qr{No \|signal\|};
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'lock_new_file no argument';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge" . rand;
+  my $f = Promised::File->new_from_path ($p);
+  my $ac = new AbortController;
+  my $ac2 = new AbortController;
+  my $ac3 = new AbortController;
+  $f->lock_new_file (signal => $ac->signal)->then (sub {
+    return $f->lock_new_file (signal => $ac2->signal, timeout => 0.5)->then (sub {
+      test {
+        ok 0;
+      } $c;
+    }, sub {
+      my $e = shift;
+      test {
+        like $e, qr{Perl I/O error: };
+      } $c;
+    });
+  })->then (sub {
+    $ac->abort;
+    return $f->lock_new_file (signal => $ac3->signal)->then (sub {
+      return $f->read_byte_string;
+    })->then (sub {
+      my $v = $_[0];
+      test {
+        is $v, '';
+      } $c;
+    }, sub {
+      my $e = shift;
+      test {
+        is $e, undef;
+      } $c;
+    })->finally (sub {
+      $ac3->abort;
+    });
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 2, name => 'lock_new_file';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/foo/hoge" . rand;
+  my $f = Promised::File->new_from_path ($p);
+  my $ac = new AbortController;
+  $f->lock_new_file (signal => $ac->signal)->then (sub {
+    test {
+      ok 1;
+    } $c;
+  }, sub {
+    my $e = shift;
+    test {
+      is $e, undef;
+    } $c;
+  })->finally (sub {
+    $ac->abort;
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'lock_new_file subdirectory';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/foo" . rand;
+  my $f = Promised::File->new_from_path ($p);
+  my $ac = new AbortController;
+  $f->write_byte_string ("abc")->then (sub {
+    return $f->lock_new_file (signal => $ac->signal);
+  })->then (sub {
+    return $f->read_byte_string;
+  })->then (sub {
+    my $v = $_[0];
+    test {
+      is $v, 'abc';
+    } $c;
+  }, sub {
+    my $e = shift;
+    test {
+      is $e, undef;
+    } $c;
+  })->finally (sub {
+    $ac->abort;
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'lock_new_file existing file';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge" . rand;
+  my $f = Promised::File->new_from_path ($p);
+  my $ac = new AbortController;
+  $f->mkpath->then (sub {
+    return $f->lock_new_file (signal => $ac->signal);
+  })->then (sub {
+    test {
+      ok 0;
+    } $c;
+  }, sub {
+    my $e = shift;
+    test {
+      like $e, qr{Perl I/O error: };
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'lock_new_file failed (directory)';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge" . rand;
+  my $f = Promised::File->new_from_path ($p);
+  my $ac = new AbortController;
+  $ac->abort;
+  return $f->lock_new_file (signal => $ac->signal)->then (sub {
+    test {
+      ok 0;
+    } $c;
+  }, sub {
+    my $e = shift;
+    test {
+      is $e->name, 'AbortError';
+    } $c;
+    my $ac2 = AbortController->new;
+    return $f->lock_new_file (signal => $ac2->signal)->then (sub {
+      test {
+        ok 1;
+      } $c;
+      $ac2->abort;
+    });
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 2, name => 'lock_new_file aborted before invocation';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge" . rand;
+  my $f = Promised::File->new_from_path ($p);
+  my $ac = new AbortController;
+  my $ac2 = new AbortController;
+  my $ac3 = new AbortController;
+  $f->lock_new_file (signal => $ac->signal)->then (sub {
+    my $canceled = 0;
+    promised_sleep (0.5)->then (sub {
+      $canceled = 1;
+      $ac2->abort;
+    });
+    return $f->lock_new_file (signal => $ac2->signal)->then (sub {
+      test {
+        ok 0;
+      } $c;
+    }, sub {
+      my $e = shift;
+      test {
+        is $e->name, 'AbortError';
+      } $c;
+    });
+  })->then (sub {
+    $ac->abort;
+    return $f->lock_new_file (signal => $ac3->signal)->then (sub {
+      return $f->read_byte_string;
+    })->then (sub {
+      my $v = $_[0];
+      test {
+        is $v, '';
+      } $c;
+    }, sub {
+      my $e = shift;
+      test {
+        is $e, undef;
+      } $c;
+    })->finally (sub {
+      $ac3->abort;
+    });
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 2, name => 'lock_new_file abort before locked';
+
 run_tests;
 
 =head1 LICENSE
 
-Copyright 2015-2019 Wakaba <wakaba@suikawiki.org>.
+Copyright 2015-2020 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

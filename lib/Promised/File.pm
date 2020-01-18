@@ -1,7 +1,7 @@
 package Promised::File;
 use strict;
 use warnings;
-our $VERSION = '5.0';
+our $VERSION = '6.0';
 use Carp;
 use AnyEvent::IO qw(:DEFAULT :flags);
 use AnyEvent::Util;
@@ -264,29 +264,37 @@ sub read_char_string ($) {
   });
 } # read_char_string
 
-sub write_bytes ($) {
-  my $self = $_[0];
+sub _open_for_write ($$) {
+  my ($self, $mode) = @_;
   my $path = $self->{path};
   $path =~ s{[^/]*\z}{};
+  return __PACKAGE__->new_from_path ($path)->mkpath->then (sub {
+    return Promise->new (sub {
+      my ($ok, $ng) = @_;
+      aio_open $self->{path}, $mode, 0644, sub {
+        return $ng->([0+$!, "".$!]) unless @_;
+        delete $self->{stat};
+        delete $self->{lstat};
+        $ok->($_[0]);
+      };
+    });
+  });
+} # _open_for_write
+
+sub write_bytes ($) {
+  my $self = $_[0];
   require Streams::IOError;
   require WritableStream;
   require DataView;
   my $fh;
   return WritableStream->new ({
     start => sub {
-      return __PACKAGE__->new_from_path ($path)->mkpath->then (sub {
-        return Promise->new (sub {
-          my ($ok, $ng) = @_;
-          aio_open $self->{path}, O_WRONLY | O_TRUNC | O_CREAT, 0644, sub {
-            return $ng->([0+$!, "".$!]) unless @_;
-            $fh = $_[0];
-            delete $self->{stat};
-            delete $self->{lstat};
-            $ok->();
-          };
-        })->catch (sub {
-          die Streams::IOError->new_from_errno_and_message (@{$_[0]});
-        });
+      return $self->_open_for_write (O_WRONLY | O_TRUNC | O_CREAT)->then (sub {
+        $fh = $_[0];
+      })->catch (sub {
+        die Streams::IOError->new_from_errno_and_message (@{$_[0]})
+            if ref $_[0] eq 'ARRAY';
+        die $_[0];
       });
     }, # start
     write => sub {
@@ -337,20 +345,11 @@ sub write_bytes ($) {
 sub write_byte_string ($$) {
   my $self = $_[0];
   my $sref = \($_[1]);
-  my $path = $self->{path};
-  $path =~ s{[^/]*\z}{};
-  return __PACKAGE__->new_from_path ($path)->mkpath->then (sub {
-    my $fh;
-    return Promise->new (sub {
-      my ($ok, $ng) = @_;
-      aio_open $self->{path}, O_WRONLY | O_TRUNC | O_CREAT, 0644, sub {
-        return $ng->("|$self->{path}|: $!") unless @_;
-        $fh = $_[0];
-        delete $self->{stat};
-        delete $self->{lstat};
-        $ok->();
-      };
-    })->then (sub {
+  return $self->_open_for_write (O_WRONLY | O_TRUNC | O_CREAT)->catch (sub {
+    die "|$self->{path}|: $_[0]->[1]" if ref $_[0] eq 'ARRAY';
+    die $_[0];
+  })->then (sub {
+    my $fh = $_[0];
       my $write; $write = sub {
         return Promise->new (sub {
           my ($ok, $ng) = @_;
@@ -379,7 +378,6 @@ sub write_byte_string ($$) {
           aio_close $fh, sub { $ok->() };
         })->then (sub { return $error });
       });
-    });
   });
 } # write_byte_string
 
@@ -387,11 +385,58 @@ sub write_char_string ($$) {
   return $_[0]->write_byte_string (encode_utf8 ($_[1]));
 } # write_char_string
 
+sub lock_new_file ($;%) {
+  my ($self, %args) = @_;
+  return $self->_open_for_write (O_WRONLY | O_CREAT)->catch (sub {
+    if (ref $_[0] eq 'ARRAY') {
+      require Streams::IOError;
+      die Streams::IOError->new_from_errno_and_message (@{$_[0]});
+    }
+    die $_[0];
+  })->then (sub {
+    my $fh = $_[0];
+    return Promise->new (sub {
+      my ($ok, $ng) = @_;
+      my $sig = $args{signal} // die "No |signal| argument";
+      die $sig->manakai_error if $sig->aborted;
+      require AnyEvent::FileLock;
+      my $w;
+      $sig->manakai_onabort (sub {
+        $ng->($sig->manakai_error);
+        undef $w;
+      });
+      $w = AnyEvent::FileLock->flock (
+        #file => $self->{path}, ## This option's error handling is broken!
+        fh => $fh,
+        mode => '>',
+        timeout => $args{timeout},
+        delay => $args{interval},
+        cb => sub {
+          my $fh = $_[0];
+          if (defined $fh) {
+            $sig->manakai_onabort (sub {
+              #flock $fh, Fcntl::LOCK_UN
+              undef $fh;
+            });
+            $ok->();
+          } else {
+            my $x = $!;
+            require Streams::IOError;
+            $ng->(Streams::IOError->new ($x));
+            $sig->manakai_onabort (undef);
+          }
+          undef $w;
+        },
+      );
+    });
+  });
+} # lock_new_file
+
 1;
 
 =head1 LICENSE
 
-Copyright 2015-2018 Wakaba <wakaba@suikawiki.org>.
+Copyright 2015-2020 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
