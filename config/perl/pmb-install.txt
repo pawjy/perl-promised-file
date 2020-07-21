@@ -4,11 +4,11 @@ AnyEvent::Util
 Canary::Stability~2013
 Carp~1.50
 Cwd~3.75
-File::Path~2.16
+File::Path~2.17
 Filter::Util::Call~1.59
 Method::WeakCallback~0.04
 Path::Tiny~0.114
 Scalar::Util~1.55
 Socket~2.030
 Term::ANSIColor~5.01
-Test::More~1.302175
+Test::Builder~1.302175
