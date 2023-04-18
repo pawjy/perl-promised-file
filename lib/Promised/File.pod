@@ -210,6 +210,12 @@ Method C<lock_new_file> requires L<AnyEvent::FileLock>.
 
 Wakaba <wakaba@suikawiki.org>.
 
+=head1 HISTORY
+
+This repository was located at
+<https://github.com/wakaba/perl-promised-file> until 18 April 2023,
+then transferred to <https://github.com/pawjy/perl-promised-file>.
+
 =head1 LICENSE
 
 Copyright 2015-2020 Wakaba <wakaba@suikawiki.org>.
