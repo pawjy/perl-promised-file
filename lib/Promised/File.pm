@@ -52,9 +52,9 @@ sub stat ($) {
   return Promise->resolve ($self->{stat}) if defined $self->{stat};
   return Promise->new (sub {
     my ($ok, $ng) = @_;
+    require File::stat;
     aio_stat $self->{path}, sub {
       return $ng->("|$self->{path}|: $!") unless @_;
-      require File::stat;
       $ok->($self->{stat} = File::stat::stat (\*_));
     };
   });
@@ -65,9 +65,9 @@ sub lstat ($) {
   return Promise->resolve ($self->{lstat}) if defined $self->{lstat};
   return Promise->new (sub {
     my ($ok, $ng) = @_;
+    require File::stat;
     aio_lstat $self->{path}, sub {
       return $ng->("|$self->{path}|: $!") unless @_;
-      require File::stat;
       $ok->($self->{lstat} = File::stat::stat (\*_));
     };
   });
@@ -436,7 +436,7 @@ sub lock_new_file ($;%) {
 
 =head1 LICENSE
 
-Copyright 2015-2020 Wakaba <wakaba@suikawiki.org>.
+Copyright 2015-2024 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
