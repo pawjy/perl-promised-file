@@ -26,13 +26,24 @@ if (Web::Encoding->can ('encode_web_utf8')) {
 sub new_from_path ($$) {
   my $path = $_[1];
   croak "No argument" unless defined $path;
+  $path = encode_utf8 ($path);
   unless ($path =~ m{^/}) {
     require Cwd;
     $path = Cwd::getcwd () . '/' . $path;
   }
-  $path = encode_utf8 ($path);
   return bless {path => $path}, $_[0];
 } # new_from_path
+
+sub new_from_raw_path ($$) {
+  my $path = $_[1];
+  croak "No argument" unless defined $path;
+  croak "Argument is utf8-flagged" if utf8::is_utf8 $path;
+  unless ($path =~ m{^/}) {
+    require Cwd;
+    $path = Cwd::getcwd () . '/' . $path;
+  }
+  return bless {path => $path}, $_[0];
+} # new_from_raw_path
 
 sub new_temp_directory ($;%) {
   my ($class, %args) = @_;
@@ -113,7 +124,7 @@ sub mkpath ($) {
     } else {
       my $path = $self->{path};
       $path =~ s{/+[^/]*\z}{};
-      return __PACKAGE__->new_from_path ($path)->mkpath->then (sub {
+      return __PACKAGE__->new_from_raw_path ($path)->mkpath->then (sub {
         return Promise->new (sub {
           my ($ok, $ng) = @_;
           aio_mkdir $self->{path}, 0755, sub {
@@ -268,7 +279,7 @@ sub _open_for_write ($$) {
   my ($self, $mode) = @_;
   my $path = $self->{path};
   $path =~ s{[^/]*\z}{};
-  return __PACKAGE__->new_from_path ($path)->mkpath->then (sub {
+  return __PACKAGE__->new_from_raw_path ($path)->mkpath->then (sub {
     return Promise->new (sub {
       my ($ok, $ng) = @_;
       aio_open $self->{path}, $mode, 0644, sub {

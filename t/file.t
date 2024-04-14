@@ -7,6 +7,7 @@ use Test::More;
 use Promised::File;
 use Promised::Flow;
 use AbortController;
+use Web::Encoding;
 
 test {
   my $c = shift;
@@ -18,12 +19,63 @@ test {
 
 test {
   my $c = shift;
+  my $f = Promised::File->new_from_raw_path ('hoge.txt');
+  isa_ok $f, 'Promised::File';
+  like $f->path_string, qr{/hoge.txt$};
+  done $c;
+} n => 2, name => 'new_from_raw_path';
+
+test {
+  my $c = shift;
   eval {
     Promised::File->new_from_path;
   };
   like $@, qr{^No argument at \Q@{[__FILE__]}\E line @{[__LINE__-2]}};
   done $c;
 } n => 1, name => 'Bad path';
+
+test {
+  my $c = shift;
+  eval {
+    Promised::File->new_from_raw_path;
+  };
+  like $@, qr{^No argument at \Q@{[__FILE__]}\E line @{[__LINE__-2]}};
+  done $c;
+} n => 1, name => 'Bad raw_path';
+
+test {
+  my $c = shift;
+  eval {
+    Promised::File->new_from_raw_path ("\x{4e00}");
+  };
+  like $@, qr{^Argument is utf8-flagged at \Q@{[__FILE__]}\E line @{[__LINE__-2]}};
+  done $c;
+} n => 1, name => 'Bad raw_path utf8';
+
+
+test {
+  my $c = shift;
+  my $f = Promised::File->new_from_path ("\x{4e00}");
+  isa_ok $f, 'Promised::File';
+  like $f->path_string, qr{/@{[encode_web_utf8 "\x{4e00}"]}$};
+  done $c;
+} n => 2, name => 'new_from_path utf8';
+
+test {
+  my $c = shift;
+  my $f = Promised::File->new_from_path ("\x81\x40\xFE");
+  isa_ok $f, 'Promised::File';
+  like $f->path_string, qr{/@{[encode_web_utf8 "\x81\x40\xFE"]}$};
+  done $c;
+} n => 2, name => 'new_from_path utf8';
+
+test {
+  my $c = shift;
+  my $f = Promised::File->new_from_raw_path ("\x81\x40\xFE");
+  isa_ok $f, 'Promised::File';
+  like $f->path_string, qr{/\x81\x40\xFE$};
+  done $c;
+} n => 2, name => 'new_from_raw_path bytes';
 
 test {
   my $c = shift;
@@ -386,6 +438,72 @@ test {
     undef $c;
   });
 } n => 1, name => 'mkpath 1 trailing slashes';
+
+test {
+  my $c = shift;
+  my $p0 = "$TempPath/hoge" . rand;
+  my $p = "$p0/\x{4e00}";
+  my $f = Promised::File->new_from_path ($p);
+  $f->mkpath->then (sub {
+    test {
+      ok -d $p;
+    } $c;
+  })->then (sub {
+    return Promised::File->new_from_path ($p0)->remove_tree;
+  })->catch (sub {
+    my $e = $_[0];
+    test {
+      is $e, undef;
+    } $c;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'mkpath non-ascii 1';
+
+test {
+  my $c = shift;
+  my $p0 = "$TempPath/hoge" . rand;
+  my $p = "$p0/\x{4e00}/abc";
+  my $f = Promised::File->new_from_path ($p);
+  $f->mkpath->then (sub {
+    test {
+      ok -d $p;
+    } $c;
+  })->then (sub {
+    return Promised::File->new_from_path ($p0)->remove_tree;
+  })->catch (sub {
+    my $e = $_[0];
+    test {
+      is $e, undef;
+    } $c;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'mkpath non-ascii 2';
+
+test {
+  my $c = shift;
+  my $p0 = "$TempPath/hoge" . rand;
+  my $p = "$p0/\x{4e00}/\x{4e01}";
+  my $f = Promised::File->new_from_path ($p);
+  $f->mkpath->then (sub {
+    test {
+      ok -d $p;
+    } $c;
+  })->then (sub {
+    return Promised::File->new_from_path ($p0)->remove_tree;
+  })->catch (sub {
+    my $e = $_[0];
+    test {
+      is $e, undef;
+    } $c;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'mkpath non-ascii 3';
 
 test {
   my $c = shift;
@@ -908,6 +1026,50 @@ test {
 
 test {
   my $c = shift;
+  my $p0 = "$TempPath/foo/hoge" . rand;
+  my $p = "$p0/\x{4e00}";
+  my $f = Promised::File->new_from_path ($p);
+  my $ac = new AbortController;
+  $f->lock_new_file (signal => $ac->signal)->then (sub {
+    test {
+      ok 1;
+    } $c;
+  }, sub {
+    my $e = shift;
+    test {
+      is $e, undef;
+    } $c;
+  })->finally (sub {
+    $ac->abort;
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'lock_new_file subdirectory non-ascii 1';
+
+test {
+  my $c = shift;
+  my $p0 = "$TempPath/foo/hoge" . rand;
+  my $p = "$p0/\x{4e00}/abc";
+  my $f = Promised::File->new_from_path ($p);
+  my $ac = new AbortController;
+  $f->lock_new_file (signal => $ac->signal)->then (sub {
+    test {
+      ok 1;
+    } $c;
+  }, sub {
+    my $e = shift;
+    test {
+      is $e, undef;
+    } $c;
+  })->finally (sub {
+    $ac->abort;
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'lock_new_file subdirectory non-ascii 2';
+
+test {
+  my $c = shift;
   my $p = "$TempPath/foo" . rand;
   my $f = Promised::File->new_from_path ($p);
   my $ac = new AbortController;
@@ -1032,7 +1194,7 @@ run_tests;
 
 =head1 LICENSE
 
-Copyright 2015-2020 Wakaba <wakaba@suikawiki.org>.
+Copyright 2015-2024 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

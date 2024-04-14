@@ -36,6 +36,14 @@ Paths in non-unix platforms such as Windows are not supported.  Paths
 in character encoding other than UTF-8 (or binary data) are not
 supported.
 
+=item $file = Promised::File->new_from_raw_path ($byte_string)
+
+Smilar to C<new_from_path>, but the argument is interpreted as a byte
+string.
+
+Don't use this method unless you know how non UTF-8 byte string is
+handled by the platform.
+
 =item $file = Promised::File->new_temp_directory (no_cleanup => BOOLEAN)
 
 Cerate a C<Promised::File> object representing a new temporary
@@ -218,7 +226,7 @@ then transferred to <https://github.com/pawjy/perl-promised-file>.
 
 =head1 LICENSE
 
-Copyright 2015-2020 Wakaba <wakaba@suikawiki.org>.
+Copyright 2015-2024 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
