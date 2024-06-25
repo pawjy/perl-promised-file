@@ -136,13 +136,19 @@ Return a L<Promise>, which is resolved after the specified character
 string is written to the specified file in UTF-8 character encoding.
 Any existing file is overwritten.  The promise is rejected if failed.
 
-=item $promise = $file->mkpath
+=item $file->mkpath->then (...)
 
-Return a L<Promise>, which is resolved after the directory specified
-by the path of the C<$file> object is created (if not yet).  It is
-rejected if there is a conflicting file.
+Create a directory at C<$file>'s path (if not yet).  Ancestor
+directories are also created, if necessary.  Any conflicting file will
+result in an error.
 
-=item $promise = $file->remove_tree
+=item $file->mkpath_parent->then (...)
+
+Create a directory that is the parent of C<$file>'s path (if not yet).
+Ancestor directories are also created, if necessary.  Any conflicting
+file will result in an error.
+
+=item $file->remove_tree->then (...)
 
 Return a L<Promise>, which is resolved after the file or directory
 specified by the path of the C<$file> object is removed, if any, as
@@ -205,8 +211,8 @@ The following options can be specified as named arguments:
 =item replace => BOOLEAN
 
 If true, any existing file at C<$file>'s path is removed before the
-creation of new hardlink.  Otherwise, any existing file results in an
-error.
+creation of new hardlink.  Otherwise, any existing file will result in
+an error.
 
 =back
 

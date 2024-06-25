@@ -543,6 +543,84 @@ test {
 
 test {
   my $c = shift;
+  my $p0 = "$TempPath/hoge" . rand;
+  my $p1 = "$p0/\x{4e00}";
+  my $p = "$p1/\x{4e01}";
+  my $f = Promised::File->new_from_path ($p);
+  $f->mkpath_parent->then (sub {
+    test {
+      ok -d $p1;
+      ok ! -d $p;
+    } $c;
+  })->then (sub {
+    return Promised::File->new_from_path ($p0)->remove_tree;
+  })->catch (sub {
+    my $e = $_[0];
+    test {
+      is $e, undef;
+    } $c;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 2, name => 'mkpath_parent';
+
+test {
+  my $c = shift;
+  my $p0 = "$TempPath/hoge" . rand;
+  my $p1 = "$p0/\x{4e00}";
+  my $p = "$p1/\x{4e01}";
+  my $f = Promised::File->new_from_path ($p);
+  return Promised::File->new_from_path ("$p1/abc")->mkpath->then (sub {
+    return $f->mkpath_parent;
+  })->then (sub {
+    test {
+      ok -d $p1;
+      ok ! -d $p;
+    } $c;
+  })->then (sub {
+    return Promised::File->new_from_path ($p0)->remove_tree;
+  })->catch (sub {
+    my $e = $_[0];
+    test {
+      is $e, undef;
+    } $c;
+  })->then (sub {
+    done $c;
+    undef $c;
+  });
+} n => 2, name => 'mkpath_parent redundant';
+
+test {
+  my $c = shift;
+  my $p0 = "$TempPath/hoge" . rand;
+  my $p1 = "$p0/\x{4e00}";
+  my $p = "$p1/\x{4e01}";
+  my $f = Promised::File->new_from_path ($p);
+  return Promised::File->new_from_path ($p1)->write_byte_string ('a')->then (sub {
+    return $f->mkpath_parent;
+  })->then (sub {
+    test {
+      ok 0;
+    } $c;
+  }, sub {
+    my $error = $_[0];
+    test {
+      is $error->name, 'Perl I/O error', $error;
+      ok $error->errno;
+      ok $error->message;
+      is $error->file_name, __FILE__;
+      is $error->line_number, __LINE__-12;
+      ok -f $p1;
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 6, name => 'mkpath_parent error';
+
+test {
+  my $c = shift;
   my $p = "$TempPath/hoge" . rand;
   my $f = Promised::File->new_from_path ($p);
   $f->mkpath->then (sub {

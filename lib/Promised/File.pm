@@ -128,7 +128,8 @@ sub mkpath ($) {
         return Promise->new (sub {
           my ($ok, $ng) = @_;
           aio_mkdir $self->{path}, 0755, sub {
-            return $ng->("|$self->{path}|: $!") unless @_;
+            return $ng->([0+$!, "".$!]) unless @_;
+            #return $ng->("|$self->{path}|: $!") unless @_;
             delete $self->{stat};
             delete $self->{lstat};
             $ok->();
@@ -141,6 +142,10 @@ sub mkpath ($) {
             if ($_[0]) {
               return;
             } else {
+              if (ref $error eq 'ARRAY') {
+                require Streams::IOError;
+                die Streams::IOError->new_from_errno_and_message (@$error);
+              }
               die $error;
             }
           });
@@ -149,6 +154,13 @@ sub mkpath ($) {
     }
   });
 } # mkpath
+
+sub mkpath_parent ($) {
+  my $self = $_[0];
+  my $path = $self->{path};
+  $path =~ s{/+[^/]*\z}{};
+  return __PACKAGE__->new_from_raw_path ($path)->mkpath;
+} # mkpath_parent
 
 sub remove_tree ($) {
   my $self = $_[0];
@@ -429,6 +441,8 @@ sub lock_new_file ($;%) {
               #flock $fh, Fcntl::LOCK_UN
               undef $fh;
             });
+            delete $self->{stat};
+            delete $self->{lstat};
             $ok->();
           } else {
             $ng->([0+$!, "".$!]);
@@ -476,6 +490,8 @@ sub hardlink_from ($$;%) {
       aio_link $from_path => $path, sub {
         return $ng->([0+$!, "".$!]) unless @_;
         $ok->();
+        delete $self->{stat};
+        delete $self->{lstat};
       };
     })->catch (sub {
       if (ref $_[0] eq 'ARRAY') {
