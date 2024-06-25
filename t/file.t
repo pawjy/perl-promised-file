@@ -975,9 +975,13 @@ test {
         ok 0;
       } $c;
     }, sub {
-      my $e = shift;
+      my $error = shift;
       test {
-        like $e, qr{Perl I/O error: };
+        is $error->name, 'Perl I/O error', $error;
+        ok $error->errno;
+        ok $error->message;
+        is $error->file_name, __FILE__;
+        is $error->line_number, __LINE__+2;
       } $c;
     });
   })->then (sub {
@@ -1001,7 +1005,7 @@ test {
     done $c;
     undef $c;
   });
-} n => 2, name => 'lock_new_file';
+} n => 6, name => 'lock_new_file';
 
 test {
   my $c = shift;
@@ -1189,6 +1193,222 @@ test {
     undef $c;
   });
 } n => 2, name => 'lock_new_file abort before locked';
+
+test {
+  my $c = shift;
+  my $p1 = "$TempPath/hoge" . rand;
+  my $p2 = "$TempPath/hoge" . rand . '/abc';
+  my $f1 = Promised::File->new_from_path ($p1);
+  my $f2 = Promised::File->new_from_path ($p2);
+  return $f1->write_byte_string ('abc')->then (sub {
+    return $f2->hardlink_from ($p1);
+  })->then (sub {
+    return $f2->read_byte_string;
+  })->then (sub {
+    my $bytes = $_[0];
+    test {
+      is $bytes, "abc";
+    } $c;
+    return $f2->write_byte_string ('xyz');
+  })->then (sub {
+    return $f1->read_byte_string;
+  })->then (sub {
+    my $bytes = $_[0];
+    test {
+      is $bytes, "xyz";
+    } $c;
+  }, sub {
+    my $e = $_[0];
+    test {
+      ok 0, $e;
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 2, name => 'hardlink_from created';
+
+test {
+  my $c = shift;
+  my $p1 = "$TempPath/hoge" . rand;
+  my $p2 = "$TempPath/hoge" . rand . '/abc';
+  my $f1 = Promised::File->new_from_path ($p1);
+  my $f2 = Promised::File->new_from_path ($p2);
+  return $f2->hardlink_from ($p1)->then (sub {
+    test {
+      ok 0;
+    } $c;
+  }, sub {
+    my $error = $_[0];
+    test {
+      is $error->name, 'Perl I/O error', $error;
+      ok $error->errno;
+      ok $error->message;
+      is $error->file_name, __FILE__;
+      is $error->line_number, __LINE__+17;
+    } $c;
+    return $f1->is_file;
+  })->then (sub {
+    my $r = $_[0];
+    test {
+      is !!$r, !!0;
+    } $c;
+    return $f2->is_file;
+  })->then (sub {
+    my $r = $_[0];
+    test {
+      is !!$r, !!0;
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 7, name => 'hardlink_from from file not found';
+
+test {
+  my $c = shift;
+  my $p1 = "$TempPath/hoge" . rand;
+  my $p2 = "$TempPath/hoge" . rand . '/abc';
+  my $f1 = Promised::File->new_from_path ($p1);
+  my $f2 = Promised::File->new_from_path ($p2);
+  return $f1->write_byte_string ('abc')->then (sub {
+    return $f2->write_byte_string ('ABC');
+  })->then (sub {
+    return $f2->hardlink_from ($p1);
+  })->then (sub {
+    test {
+      ok 0;
+    } $c;
+  }, sub {
+    my $error = $_[0];
+    test {
+      is $error->name, 'Perl I/O error', $error;
+      ok $error->errno;
+      ok $error->message;
+      is $error->file_name, __FILE__;
+      is $error->line_number, __LINE__-12;
+    } $c;
+    return $f2->read_byte_string;
+  })->then (sub {
+    my $bytes = $_[0];
+    test {
+      is $bytes, "ABC";
+    } $c;
+    return $f1->read_byte_string;
+  })->then (sub {
+    my $bytes = $_[0];
+    test {
+      is $bytes, "abc";
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 7, name => 'hardlink_from to file found';
+
+test {
+  my $c = shift;
+  my $p1 = "$TempPath/hoge" . rand;
+  my $p2 = "$TempPath/hoge" . rand . '/abc';
+  my $f1 = Promised::File->new_from_path ($p1);
+  my $f2 = Promised::File->new_from_path ($p2);
+  return $f1->write_byte_string ('abc')->then (sub {
+    return $f2->hardlink_from ($p1, replace => 1);
+  })->then (sub {
+    return $f2->read_byte_string;
+  })->then (sub {
+    my $bytes = $_[0];
+    test {
+      is $bytes, "abc";
+    } $c;
+    return $f2->write_byte_string ('xyz');
+  })->then (sub {
+    return $f1->read_byte_string;
+  })->then (sub {
+    my $bytes = $_[0];
+    test {
+      is $bytes, "xyz";
+    } $c;
+  }, sub {
+    my $e = $_[0];
+    test {
+      ok 0, $e;
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 2, name => 'hardlink_from replace nop';
+
+test {
+  my $c = shift;
+  my $p1 = "$TempPath/hoge" . rand;
+  my $p2 = "$TempPath/hoge" . rand . '/abc';
+  my $f1 = Promised::File->new_from_path ($p1);
+  my $f2 = Promised::File->new_from_path ($p2);
+  return $f1->write_byte_string ('abc')->then (sub {
+    return $f2->write_byte_string ('ABC');
+  })->then (sub {
+    return $f2->hardlink_from ($p1, replace => 1);
+  })->then (sub {
+    return $f2->read_byte_string;
+  })->then (sub {
+    my $bytes = $_[0];
+    test {
+      is $bytes, "abc";
+    } $c;
+    return $f2->write_byte_string ('xyz');
+  })->then (sub {
+    return $f1->read_byte_string;
+  })->then (sub {
+    my $bytes = $_[0];
+    test {
+      is $bytes, "xyz";
+    } $c;
+  }, sub {
+    my $e = $_[0];
+    test {
+      ok 0, $e;
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 2, name => 'hardlink_from replace file';
+
+test {
+  my $c = shift;
+  my $p1 = "$TempPath/hoge" . rand . "\x{4000}";
+  my $p2 = "$TempPath/hoge" . rand . '/abc' . "\x{5000}";
+  my $f1 = Promised::File->new_from_path ($p1);
+  my $f2 = Promised::File->new_from_path ($p2);
+  return $f1->write_byte_string ('abc')->then (sub {
+    return $f2->hardlink_from ($p1);
+  })->then (sub {
+    return $f2->read_byte_string;
+  })->then (sub {
+    my $bytes = $_[0];
+    test {
+      is $bytes, "abc";
+    } $c;
+    return $f2->write_byte_string ('xyz');
+  })->then (sub {
+    return $f1->read_byte_string;
+  })->then (sub {
+    my $bytes = $_[0];
+    test {
+      is $bytes, "xyz";
+    } $c;
+  }, sub {
+    my $e = $_[0];
+    test {
+      ok 0, $e;
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 2, name => 'hardlink_from non-ascii file name';
 
 run_tests;
 

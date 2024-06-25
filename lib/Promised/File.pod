@@ -192,6 +192,24 @@ in seconds.
 
 =back
 
+=item $file->hardlink_from ($string, replace => BOOLEAN)->then (...)
+
+Create a hardlink.  The first arugment is a path to the linked file.
+A new file is created at C<$file>'s path and is associated to the
+existing file <$string>'s content.
+
+The following options can be specified as named arguments:
+
+=over 4
+
+=item replace => BOOLEAN
+
+If true, any existing file at C<$file>'s path is removed before the
+creation of new hardlink.  Otherwise, any existing file results in an
+error.
+
+=back
+
 =back
 
 =head1 DEPENDENCY

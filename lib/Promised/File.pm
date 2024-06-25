@@ -431,17 +431,61 @@ sub lock_new_file ($;%) {
             });
             $ok->();
           } else {
-            my $x = $!;
-            require Streams::IOError;
-            $ng->(Streams::IOError->new ($x));
+            $ng->([0+$!, "".$!]);
             $sig->manakai_onabort (undef);
           }
           undef $w;
         },
       );
+    })->catch (sub {
+      if (ref $_[0] eq 'ARRAY') {
+        require Streams::IOError;
+        die Streams::IOError->new_from_errno_and_message (@{$_[0]});
+      }
+      die $_[0];
     });
   });
 } # lock_new_file
+
+sub hardlink_from ($$;%) {
+  my ($self, $from_path, %args) = @_;
+  my $path = my $parent_path = $self->{path};
+  $parent_path =~ s{[^/]*\z}{};
+  return __PACKAGE__->new_from_raw_path ($parent_path)->mkpath->then (sub {
+    if ($args{replace}) {
+      return Promise->new (sub {
+        my ($ok, $ng) = @_;
+        aio_unlink $path, sub {
+          #return $ng->([0+$!, "".$!]) unless @_;
+          $ok->();
+        };
+        ## replacing directory is not supported, not sure whether we
+        ## should support it too...
+      #})->catch (sub {
+      #  if (ref $_[0] eq 'ARRAY') {
+      #    require Streams::IOError;
+      #    die Streams::IOError->new_from_errno_and_message (@{$_[0]});
+      #  }
+      #  die $_[0];
+      });
+    }
+  })->then (sub {
+    # XXX If another filesystem, copy
+    return Promise->new (sub {
+      my ($ok, $ng) = @_;
+      aio_link $from_path => $path, sub {
+        return $ng->([0+$!, "".$!]) unless @_;
+        $ok->();
+      };
+    })->catch (sub {
+      if (ref $_[0] eq 'ARRAY') {
+        require Streams::IOError;
+        die Streams::IOError->new_from_errno_and_message (@{$_[0]});
+      }
+      die $_[0];
+    });
+  });
+} # hardlink_from
 
 1;
 
