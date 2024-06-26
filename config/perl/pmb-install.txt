@@ -1,14 +1,16 @@
 AnyEvent~7.17
 AnyEvent::FileLock~0.06
-AnyEvent::IO
 Canary::Stability~2013
 Carp~1.50
 Cwd~3.75
 File::Path~2.18
+File::Temp~0.2311
 Filter::Util::Call~1.64
+IO::AIO~4.81
 Method::WeakCallback~0.04
 Path::Tiny~0.146
 Scalar::Util~1.63
 Socket~2.038
 Term::ANSIColor~5.01
 Test::Builder~1.302199
+common::sense~3.75

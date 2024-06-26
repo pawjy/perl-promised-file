@@ -1488,6 +1488,282 @@ test {
   });
 } n => 2, name => 'hardlink_from non-ascii file name';
 
+test {
+  my $c = shift;
+  my $p1 = "$TempPath/hoge" . rand . "\x{4000}";
+  my $p2 = "$TempPath/hoge" . rand . '/abc' . "\x{5000}";
+  my $f1 = Promised::File->new_from_path ($p1);
+  my $f2 = Promised::File->new_from_path ($p2);
+  return $f1->write_byte_string ('abc')->then (sub {
+    return $f2->hardlink_from ($p1, fallback_to_copy => 1);
+  })->then (sub {
+    return $f2->read_byte_string;
+  })->then (sub {
+    my $bytes = $_[0];
+    test {
+      is $bytes, "abc";
+    } $c;
+    return $f2->write_byte_string ('xyz');
+  })->then (sub {
+    return $f1->read_byte_string;
+  })->then (sub {
+    my $bytes = $_[0];
+    test {
+      is $bytes, "xyz";
+    } $c;
+  }, sub {
+    my $e = $_[0];
+    test {
+      ok 0, $e;
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 2, name => 'hardlink_from fallback_to_copy specified (but nop)';
+
+test {
+  my $c = shift;
+  my $p1 = "$TempPath/hoge" . rand . "a";
+  my $p2 = "$TempPath/hoge" . rand . '/abc' . "a";
+  my $f1 = Promised::File->new_from_path ($p1);
+  my $f2 = Promised::File->new_from_path ($p2);
+  return $f1->write_byte_string ('abc')->then (sub {
+    return $f2->move_from ($p1);
+  })->then (sub {
+    return $f2->read_byte_string;
+  })->then (sub {
+    my $bytes = $_[0];
+    test {
+      is $bytes, "abc";
+    } $c;
+    return $f1->is_file;
+  })->then (sub {
+    my $has = $_[0];
+    test {
+      is !!$has, !!0;
+    } $c;
+  }, sub {
+    my $e = $_[0];
+    test {
+      ok 0, $e;
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 2, name => 'move_from mkdir';
+
+test {
+  my $c = shift;
+  my $p1 = "$TempPath/hoge" . rand . "\x{4000}";
+  my $p2 = "$TempPath/hoge" . rand . '/abc' . "\x{5000}";
+  my $f1 = Promised::File->new_from_path ($p1);
+  my $f2 = Promised::File->new_from_path ($p2);
+  return $f1->write_byte_string ('abc')->then (sub {
+    return $f2->move_from ($p1);
+  })->then (sub {
+    return $f2->read_byte_string;
+  })->then (sub {
+    my $bytes = $_[0];
+    test {
+      is $bytes, "abc";
+    } $c;
+    return $f1->is_file;
+  })->then (sub {
+    my $has = $_[0];
+    test {
+      is !!$has, !!0;
+    } $c;
+  }, sub {
+    my $e = $_[0];
+    test {
+      ok 0, $e;
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 2, name => 'move_from non-ascii';
+
+test {
+  my $c = shift;
+  my $p1 = "$TempPath/hoge" . rand . "a";
+  my $p2 = "$TempPath/hoge" . rand . '/abc' . "a";
+  my $f1 = Promised::File->new_from_path ($p1);
+  my $f2 = Promised::File->new_from_path ($p2);
+  return $f1->write_byte_string ('abc')->then (sub {
+    return $f2->write_byte_string ('xyz');
+  })->then (sub {
+    return $f2->move_from ($p1);
+  })->then (sub {
+    return $f2->read_byte_string;
+  })->then (sub {
+    my $bytes = $_[0];
+    test {
+      is $bytes, "abc";
+    } $c;
+    return $f1->is_file;
+  })->then (sub {
+    my $has = $_[0];
+    test {
+      is !!$has, !!0;
+    } $c;
+  }, sub {
+    my $e = $_[0];
+    test {
+      ok 0, $e;
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 2, name => 'move_from overwrite';
+
+test {
+  my $c = shift;
+  my $p1 = "$TempPath/hoge" . rand;
+  my $p2 = "$TempPath/hoge" . rand . '/abc';
+  my $f1 = Promised::File->new_from_path ($p1);
+  my $f2 = Promised::File->new_from_path ($p2);
+  return $f2->write_byte_string ('abc')->then (sub {
+    return $f2->move_from ($p1);
+  })->then (sub {
+    test {
+      ok 0;
+    } $c;
+  }, sub {
+    my $error = $_[0];
+    test {
+      is $error->name, 'Perl I/O error', $error;
+      ok $error->errno;
+      ok $error->message;
+      is $error->file_name, __FILE__;
+      is $error->line_number, __LINE__-12;
+    } $c;
+    return $f1->is_file;
+  })->then (sub {
+    my $r = $_[0];
+    test {
+      is !!$r, !!0;
+    } $c;
+    return $f2->read_byte_string;
+  })->then (sub {
+    my $r = $_[0];
+    test {
+      is $r, 'abc';
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 7, name => 'move_from from file not found';
+
+test {
+  my $c = shift;
+  my $p1 = "$TempPath/hoge" . rand . "\x{4000}";
+  my $p2 = "$TempPath/hoge" . rand . '/abc' . "\x{5000}";
+  my $f1 = Promised::File->new_from_path ($p1);
+  my $f2 = Promised::File->new_from_path ($p2);
+  return $f1->write_byte_string ('abc')->then (sub {
+    return $f2->copy_from ($p1);
+  })->then (sub {
+    return $f2->read_byte_string;
+  })->then (sub {
+    my $bytes = $_[0];
+    test {
+      is $bytes, "abc";
+    } $c;
+    return $f1->read_byte_string;
+  })->then (sub {
+    my $bytes = $_[0];
+    test {
+      is $bytes, "abc";
+    } $c;
+  }, sub {
+    my $e = $_[0];
+    test {
+      ok 0, $e;
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 2, name => 'copy_from non-ascii';
+
+test {
+  my $c = shift;
+  my $p1 = "$TempPath/hoge" . rand . "\x{4000}";
+  my $p2 = "$TempPath/hoge" . rand . '/abc' . "\x{5000}";
+  my $f1 = Promised::File->new_from_path ($p1);
+  my $f2 = Promised::File->new_from_path ($p2);
+  return $f1->write_byte_string ('abc')->then (sub {
+    return $f2->write_byte_string ('zaz');
+  })->then (sub {
+    return $f2->copy_from ($p1);
+  })->then (sub {
+    return $f2->read_byte_string;
+  })->then (sub {
+    my $bytes = $_[0];
+    test {
+      is $bytes, "abc";
+    } $c;
+    return $f1->read_byte_string;
+  })->then (sub {
+    my $bytes = $_[0];
+    test {
+      is $bytes, "abc";
+    } $c;
+  }, sub {
+    my $e = $_[0];
+    test {
+      ok 0, $e;
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 2, name => 'copy_from overwrite';
+
+test {
+  my $c = shift;
+  my $p1 = "$TempPath/hoge" . rand;
+  my $p2 = "$TempPath/hoge" . rand . '/abc';
+  my $f1 = Promised::File->new_from_path ($p1);
+  my $f2 = Promised::File->new_from_path ($p2);
+  return $f2->write_byte_string ('abc')->then (sub {
+    return $f2->copy_from ($p1);
+  })->then (sub {
+    test {
+      ok 0;
+    } $c;
+  }, sub {
+    my $error = $_[0];
+    test {
+      is $error->name, 'Perl I/O error', $error;
+      ok $error->errno;
+      ok $error->message;
+      is $error->file_name, __FILE__;
+      is $error->line_number, __LINE__-12;
+    } $c;
+    return $f1->is_file;
+  })->then (sub {
+    my $r = $_[0];
+    test {
+      is !!$r, !!0;
+    } $c;
+    return $f2->read_byte_string;
+  })->then (sub {
+    my $r = $_[0];
+    test {
+      is $r, 'abc';
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 7, name => 'copy_from from file not found';
+
 run_tests;
 
 =head1 LICENSE

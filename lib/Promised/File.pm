@@ -462,7 +462,9 @@ sub lock_new_file ($;%) {
 } # lock_new_file
 
 sub hardlink_from ($$;%) {
-  my ($self, $from_path, %args) = @_;
+  my ($self, undef, %args) = @_;
+  my $in_path = $_[1];
+  my $from_path = encode_utf8 ($in_path);
   my $path = my $parent_path = $self->{path};
   $parent_path =~ s{[^/]*\z}{};
   return __PACKAGE__->new_from_raw_path ($parent_path)->mkpath->then (sub {
@@ -484,7 +486,6 @@ sub hardlink_from ($$;%) {
       });
     }
   })->then (sub {
-    # XXX If another filesystem, copy
     return Promise->new (sub {
       my ($ok, $ng) = @_;
       aio_link $from_path => $path, sub {
@@ -495,13 +496,73 @@ sub hardlink_from ($$;%) {
       };
     })->catch (sub {
       if (ref $_[0] eq 'ARRAY') {
+        if ($args{fallback_to_copy}) {
+          return $self->copy_from ($in_path, %args);
+        } else {
+          require Streams::IOError;
+          die Streams::IOError->new_from_errno_and_message (@{$_[0]});
+        }
+      }
+      die $_[0];
+    });
+  });
+} # hardlink_from
+
+sub move_from ($$) {
+  my ($self, undef) = @_;
+  my $from_path = encode_utf8 ($_[1]);
+  my $path = my $parent_path = $self->{path};
+  $parent_path =~ s{[^/]*\z}{};
+  return __PACKAGE__->new_from_raw_path ($parent_path)->mkpath->then (sub {
+    return Promise->new (sub {
+      my ($ok, $ng) = @_;
+      require IO::AIO;
+      IO::AIO::aio_move ($from_path => $path, sub {
+        if ($_[0] == 0) {
+          $ok->();
+          delete $self->{stat};
+          delete $self->{lstat};
+        } else {
+          $ng->([0+$!, "".$!]);
+        }
+      });
+    })->catch (sub {
+      if (ref $_[0] eq 'ARRAY') {
         require Streams::IOError;
         die Streams::IOError->new_from_errno_and_message (@{$_[0]});
       }
       die $_[0];
     });
   });
-} # hardlink_from
+} # move_from
+
+sub copy_from ($$) {
+  my ($self, undef) = @_;
+  my $from_path = encode_utf8 ($_[1]);
+  my $path = my $parent_path = $self->{path};
+  $parent_path =~ s{[^/]*\z}{};
+  return __PACKAGE__->new_from_raw_path ($parent_path)->mkpath->then (sub {
+    return Promise->new (sub {
+      my ($ok, $ng) = @_;
+      require IO::AIO;
+      IO::AIO::aio_copy ($from_path => $path, sub {
+        if ($_[0] == 0) {
+          $ok->();
+          delete $self->{stat};
+          delete $self->{lstat};
+        } else {
+          $ng->([0+$!, "".$!]);
+        }
+      });
+    })->catch (sub {
+      if (ref $_[0] eq 'ARRAY') {
+        require Streams::IOError;
+        die Streams::IOError->new_from_errno_and_message (@{$_[0]});
+      }
+      die $_[0];
+    });
+  });
+} # copy_from
 
 1;
 

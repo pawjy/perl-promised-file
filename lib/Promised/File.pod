@@ -198,17 +198,38 @@ in seconds.
 
 =back
 
-=item $file->hardlink_from ($string, replace => BOOLEAN)->then (...)
+=item $file->move_from ($string)->then (...)
+
+Move a file.  The first argument is a path to the original file.  It
+is moved to the C<$file>'s path.
+
+It must be a normal file (not a directory).
+
+=item $file->copy_from ($string)->then (...)
+
+Copy a file.  The first argument is a path to the original file.  It
+is copied to the C<$file>'s path.
+
+It must be a normal file (not a directory).
+
+=item $file->hardlink_from ($string, OPTIONS)->then (...)
 
 Create a hardlink.  The first arugment is a path to the linked file.
 A new file is created at C<$file>'s path and is associated to the
 existing file <$string>'s content.
 
+It must be a normal file (not a directory).
+
 The following options can be specified as named arguments:
 
 =over 4
 
-=item replace => BOOLEAN
+=item fallback => BOOLEAN (default: false)
+
+If true, fallback to C<copy_from> on failure (e.g. when the specified
+path and the file's path are on different filesystem).
+
+=item replace => BOOLEAN (default: false)
 
 If true, any existing file at C<$file>'s path is removed before the
 creation of new hardlink.  Otherwise, any existing file will result in
@@ -237,6 +258,10 @@ module is used to encode or decode UTF-8 texts in a way compatible
 with the Web.  Otherwise, the Perl's L<Encode> module is used instead.
 
 Method C<lock_new_file> requires L<AnyEvent::FileLock>.
+
+Methods C<move_from> and C<copy_from>, as well as method
+C<hardlink_from> with option C<fallback_to_copy>, requires
+L<AnyEvent::AIO> and L<IO::AIO>.
 
 =head1 AUTHOR
 

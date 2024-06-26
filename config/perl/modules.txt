@@ -6,3 +6,6 @@ AnyEvent::IO
 AnyEvent::Util
 
 AnyEvent::FileLock
+
+IO::AIO
+AnyEvent::AIO
