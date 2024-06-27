@@ -116,6 +116,22 @@ sub is_executable ($) {
   });
 } # is_executable
 
+sub chmod ($$) {
+  my ($self, $mode) = @_;
+  return Promise->new (sub {
+    my ($ok, $ng) = @_;
+    aio_chmod $self->{path}, $mode, sub {
+      return $ng->([0+$!, "".$!]) unless @_;
+      $ok->($_[0]);
+      delete $self->{stat};
+      delete $self->{lstat};
+    };
+  })->catch (sub {
+    require Streams::IOError;
+    die Streams::IOError->new_from_errno_and_message (@{$_[0]});
+  });
+} # chmod
+
 sub mkpath ($) {
   my $self = $_[0];
   return $self->is_directory->then (sub {

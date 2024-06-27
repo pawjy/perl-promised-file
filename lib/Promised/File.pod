@@ -88,6 +88,11 @@ Return a L<Promise>, which is resolved with whether it is a file
 (C<-x>), respectively.  If the file is not found, the promise is
 resolved with false.
 
+=item $file->chmod ($mode)->then (...)
+
+Change the file's permission to the specified value (e.g. C<0777> for
+world-readable).
+
 =item $stream = $file->read_bytes
 
 Return a L<ReadableStream> that is a readable byte stream of the

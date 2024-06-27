@@ -1764,6 +1764,55 @@ test {
   });
 } n => 7, name => 'copy_from from file not found';
 
+test {
+  my $c = shift;
+  my $p1 = "$TempPath/hoge" . rand . "\x{4000}";
+  my $f1 = Promised::File->new_from_path ($p1);
+  return $f1->write_byte_string ('abc')->then (sub {
+    return $f1->chmod (0571);
+  })->then (sub {
+    return $f1->stat;
+  })->then (sub {
+    my $mode = $_[0]->mode & 0777;
+    test {
+      is $mode, 0571;
+    } $c;
+  }, sub {
+    my $e = $_[0];
+    test {
+      ok 0, $e;
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 1, name => 'chmod';
+
+test {
+  my $c = shift;
+  my $p1 = "$TempPath/hoge" . rand . "\x{4000}";
+  my $f1 = Promised::File->new_from_path ($p1);
+  return Promise->resolve->then (sub {
+    return $f1->chmod (0571);
+  })->then (sub {
+    test {
+      ok 0;
+    } $c;
+  }, sub {
+    my $error = $_[0];
+    test {
+      is $error->name, 'Perl I/O error', $error;
+      ok $error->errno;
+      ok $error->message;
+      is $error->file_name, __FILE__;
+      is $error->line_number, __LINE__-12;
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 5, name => 'chmod file not found';
+
 run_tests;
 
 =head1 LICENSE
