@@ -16,3 +16,14 @@ Term::ANSIColor~5.01
 Test::Builder~1.302199
 common::sense~3.75
 Test::More~1.302199
+Cwd
+File::Path
+File::stat
+
+AnyEvent::IO
+AnyEvent::Util
+
+AnyEvent::FileLock
+
+IO::AIO
+AnyEvent::AIO
