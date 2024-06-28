@@ -683,6 +683,73 @@ test {
   my $c = shift;
   my $p = "$TempPath/hoge." . rand;
   my $f = Promised::File->new_from_path ($p);
+  my $f2 = Promised::File->new_from_path ("$p/abc");
+  return $f->mkpath->then (sub {
+    return $f2->write_byte_string ('a');
+  })->then (sub {
+    return $f2->chmod (0444);
+  })->then (sub {
+    return $f->remove_tree;
+  })->then (sub {
+    test { ok 0 } $c;
+  }, sub {
+    my $e = $_[0];
+    test {
+      ok $e, $e;
+    } $c;
+  })->then (sub {
+    return $f2->read_byte_string;
+  })->then (sub {
+    my $bytes = $_[0];
+    test {
+      is $bytes, "a";
+    } $c;
+  }, sub {
+    my $e = $_[0];
+    test {
+      ok 0, $e;
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 2, name => 'remove_tree read-only file with safe';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge." . rand;
+  my $f = Promised::File->new_from_path ($p);
+  my $f2 = Promised::File->new_from_path ("$p/abc");
+  return $f->mkpath->then (sub {
+    return $f2->write_byte_string ('a');
+  })->then (sub {
+    return $f2->chmod (0444);
+  })->then (sub {
+    return $f->remove_tree (unsafe => 1);
+  })->then (sub {
+    test { ok 1 } $c;
+  }, sub {
+    my $e = $_[0];
+    test {
+      ok $e, $e;
+    } $c;
+  })->then (sub {
+    return $f->is_directory;
+  })->then (sub {
+    my $ok = $_[0];
+    test {
+      is !!$ok, !!0;
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 2, name => 'remove_tree read-only file with unsafe';
+
+test {
+  my $c = shift;
+  my $p = "$TempPath/hoge." . rand;
+  my $f = Promised::File->new_from_path ($p);
   $f->write_byte_string ('')->then (sub {
     my $g = Promised::File->new_from_path ($p);
     $g->read_byte_string->then (sub {

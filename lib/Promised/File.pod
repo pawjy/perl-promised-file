@@ -153,11 +153,21 @@ Create a directory that is the parent of C<$file>'s path (if not yet).
 Ancestor directories are also created, if necessary.  Any conflicting
 file will result in an error.
 
-=item $file->remove_tree->then (...)
+=item $file->remove_tree (OPTIONS)->then (...)
 
-Return a L<Promise>, which is resolved after the file or directory
-specified by the path of the C<$file> object is removed, if any, as
-well as any descendant.  It is rejected if the removal failed.
+Remove a file or directory of C<$file>'s path (if any), as well as any
+descendant.
+
+The following option can be specified as named arguments:
+
+=over 4
+
+=item unsafe => BOOLEAN (default: false)
+
+If false, any descendant with read-only permission is not deleted (see
+L<File::Path>).
+
+=back
 
 =item $file->get_child_names->then (sub { $names = $_[0] })
 

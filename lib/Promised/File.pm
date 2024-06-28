@@ -178,8 +178,9 @@ sub mkpath_parent ($) {
   return __PACKAGE__->new_from_raw_path ($path)->mkpath;
 } # mkpath_parent
 
-sub remove_tree ($) {
-  my $self = $_[0];
+sub remove_tree ($;%) {
+  my ($self, %args) = @_;
+  my $safe = not $args{unsafe};
   return $self->stat->then (sub {
     if (-e $_[0]) {
       return Promise->new (sub {
@@ -187,7 +188,7 @@ sub remove_tree ($) {
         my $path = $self->{path};
         fork_call {
           my $err;
-          my $args = {error => \$err, safe => 1};
+          my $args = {error => \$err, safe => $safe};
           require File::Path;
           File::Path::remove_tree ($path, $args);
           if (defined $err and @$err) {
