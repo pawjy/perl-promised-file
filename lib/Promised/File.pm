@@ -355,10 +355,10 @@ sub write_bytes ($) {
           })->then (sub {
             $dv = DataView->new
                 ($dv->buffer, $dv->byte_offset + $_[0], $dv->byte_length - $_[0]); # or throw
+            return not 'done';
           }, sub {
             die Streams::IOError->new_from_errno_and_message (@{$_[0]});
           });
-          return not 'done';
         };
       })->catch (sub {
         my $error = $_[0];
@@ -379,6 +379,8 @@ sub write_bytes ($) {
         aio_close $fh, $_[0];
       });
     }, # abort
+  }, {
+    high_water_mark => 100,
   });
 } # write_bytes
 
