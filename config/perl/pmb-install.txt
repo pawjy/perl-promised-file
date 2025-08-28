@@ -14,5 +14,5 @@ Scalar::Util~1.70
 Socket~2.040
 Term::ANSIColor~5.01
 Term::Table~0.024
-Test::Builder~1.302214
+Test::More~1.302214
 common::sense~3.75
