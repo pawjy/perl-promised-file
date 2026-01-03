@@ -93,6 +93,12 @@ resolved with false.
 Change the file's permission to the specified value (e.g. C<0777> for
 world-readable).
 
+=item $file->utime ($atime, $mtime)->then (...)
+
+Change the file's timestamps to the specified value.  The arguments
+are same as C<utime>'s second and third arguments, i.e. access and
+modified times in Unix time seconds.
+
 =item $stream = $file->read_bytes
 
 Return a L<ReadableStream> that is a readable byte stream of the
@@ -290,7 +296,7 @@ then transferred to <https://github.com/pawjy/perl-promised-file>.
 
 =head1 LICENSE
 
-Copyright 2015-2024 Wakaba <wakaba@suikawiki.org>.
+Copyright 2015-2026 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

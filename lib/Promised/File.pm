@@ -132,6 +132,22 @@ sub chmod ($$) {
   });
 } # chmod
 
+sub utime ($$$) {
+  my ($self, $atime, $mtime) = @_;
+  return Promise->new (sub {
+    my ($ok, $ng) = @_;
+    aio_utime $self->{path}, $atime, $mtime, sub {
+      return $ng->([0+$!, "".$!]) unless @_;
+      $ok->($_[0]);
+      delete $self->{stat};
+      delete $self->{lstat};
+    };
+  })->catch (sub {
+    require Streams::IOError;
+    die Streams::IOError->new_from_errno_and_message (@{$_[0]});
+  });
+} # utime
+
 sub mkpath ($) {
   my $self = $_[0];
   return $self->is_directory->then (sub {
@@ -587,7 +603,7 @@ sub copy_from ($$) {
 
 =head1 LICENSE
 
-Copyright 2015-2024 Wakaba <wakaba@suikawiki.org>.
+Copyright 2015-2026 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

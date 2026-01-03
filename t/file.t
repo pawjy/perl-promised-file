@@ -1880,11 +1880,61 @@ test {
   });
 } n => 5, name => 'chmod file not found';
 
+test {
+  my $c = shift;
+  my $p1 = "$TempPath/hoge" . rand . "\x{4000}";
+  my $f1 = Promised::File->new_from_path ($p1);
+  return $f1->write_byte_string ('abc')->then (sub {
+    return $f1->utime (-6363444, 436344356);
+  })->then (sub {
+    return $f1->stat;
+  })->then (sub {
+    my $stat = $_[0];
+    test {
+      is $stat->mtime, 436344356;
+      is $stat->atime, -6363444;
+    } $c;
+  }, sub {
+    my $e = $_[0];
+    test {
+      ok 0, $e;
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 2, name => 'utime';
+
+test {
+  my $c = shift;
+  my $p1 = "$TempPath/hoge" . rand . "\x{4000}";
+  my $f1 = Promised::File->new_from_path ($p1);
+  return Promise->resolve->then (sub {
+    return $f1->utime (35, 236);
+  })->then (sub {
+    test {
+      ok 0;
+    } $c;
+  }, sub {
+    my $error = $_[0];
+    test {
+      is $error->name, 'Perl I/O error', $error;
+      ok $error->errno;
+      ok $error->message;
+      is $error->file_name, __FILE__;
+      is $error->line_number, __LINE__-12;
+    } $c;
+  })->finally (sub {
+    done $c;
+    undef $c;
+  });
+} n => 5, name => 'utime file not found';
+
 run_tests;
 
 =head1 LICENSE
 
-Copyright 2015-2024 Wakaba <wakaba@suikawiki.org>.
+Copyright 2015-2026 Wakaba <wakaba@suikawiki.org>.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
